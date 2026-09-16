@@ -51,7 +51,7 @@ async function analyzeCompetitor(competitor) {
   }
 
   const message = await anthropic.messages.create({
-    model: 'claude-opus-4-20250805',
+    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 1000,
     messages: [
       {
@@ -160,7 +160,7 @@ async function detectChanges(competitor, newAnalysis) {
 // Score threat level
 async function scoreThreat(competitor, analysis) {
   const message = await anthropic.messages.create({
-    model: 'claude-opus-4-20250805',
+    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 500,
     messages: [
       {
