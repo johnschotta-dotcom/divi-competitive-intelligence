@@ -449,7 +449,7 @@ const styles = {
   },
   empty: {
     textAlign: 'center',
-    opacity: 0.7',
+    opacity: 0.7,
     padding: '40px 20px',
   },
   grid: {
