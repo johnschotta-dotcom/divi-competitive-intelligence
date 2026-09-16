@@ -175,7 +175,7 @@ Evaluate this competitor on 0-100 scale:
 Name: ${competitor.name}
 Website: ${competitor.website}
 Features: ${analysis.features?.join(', ') || 'unknown'}
-Pricing: ${analysis.pricing?.map(p => \`\${p.tier} - \${p.price}\`).join(', ') || 'unknown'}
+Pricing: ${analysis.pricing?.map(p => p.tier + ' - ' + p.price).join(', ') || 'unknown'}
 
 Return ONLY valid JSON (no markdown):
 {
