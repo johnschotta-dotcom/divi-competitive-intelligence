@@ -57,21 +57,11 @@ export default function LoginPage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: '#C523A1',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontFamily: 'system-ui, sans-serif',
-            }}
-          >
-            DI
-          </div>
+          <img
+            src="/divi-logo.png"
+            alt="Divi"
+            style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', display: 'block' }}
+          />
           <div style={{ fontFamily: 'system-ui, sans-serif', fontWeight: 700, letterSpacing: 0.3 }}>
             Divi Intelligence
           </div>

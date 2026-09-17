@@ -18,11 +18,37 @@ function domainFromWebsite(website) {
   }
 }
 
-function logoCandidates(website, preferred) {
+function isDiviSite(website, name) {
+  const site = String(website || '').toLowerCase();
+  const n = String(name || '').trim().toLowerCase();
+  return n === 'divi' || n === 'divi.fund' || site.includes('divi.fund');
+}
+
+function logoCandidates(website, preferred, name) {
   const domain = domainFromWebsite(website);
   const list = [];
-  if (preferred && !/logo\.clearbit\.com/i.test(preferred)) list.push(preferred);
+
+  // Divi: always use our bundled high-res mark (avoid blurry Google/icon.horse copies)
+  if (isDiviSite(website, name)) {
+    list.push('/divi-logo.png');
+    list.push('https://divi.fund/apple-touch-icon.png');
+    list.push('https://divi.fund/icon-192.png');
+    return [...new Set(list)];
+  }
+
+  // Skip dead Clearbit + tiny Google favicon caches when we have better options
+  if (
+    preferred &&
+    !/logo\.clearbit\.com|gstatic\.com\/favicon|google\.com\/s2\/favicons/i.test(preferred)
+  ) {
+    list.push(preferred);
+  }
+
   if (domain) {
+    list.push(`https://${domain}/apple-touch-icon.png`);
+    list.push(`https://${domain}/apple-touch-icon.jpg`);
+    list.push(`https://${domain}/icon-192.png`);
+    list.push(`https://www.${domain}/apple-touch-icon.png`);
     list.push(`https://icon.horse/icon/${domain}`);
     list.push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`);
     list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
@@ -32,7 +58,7 @@ function logoCandidates(website, preferred) {
 
 function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
   const [idx, setIdx] = useState(0);
-  const candidates = logoCandidates(website, logoUrl);
+  const candidates = logoCandidates(website, logoUrl, name);
   const src = candidates[idx];
   const initials = String(name || '?')
     .split(/\s+/)
@@ -40,6 +66,7 @@ function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const divi = isDiviSite(website, name);
 
   if (!src || idx >= candidates.length) {
     return (
@@ -47,7 +74,7 @@ function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
         style={{
           width: size,
           height: size,
-          borderRadius: 12,
+          borderRadius: Math.max(8, size * 0.18),
           background: 'linear-gradient(135deg, #C523A1, #5b2c6f)',
           color: '#fff',
           display: 'flex',
@@ -73,9 +100,10 @@ function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
         width: size,
         height: size,
         objectFit: 'contain',
-        borderRadius: 12,
-        background: '#fff',
-        padding: 6,
+        borderRadius: Math.max(8, size * 0.18),
+        // Gradient logos (Divi) look wrong on a white pad
+        background: divi ? 'transparent' : 'rgba(255,255,255,0.92)',
+        padding: divi ? 0 : 4,
         flexShrink: 0,
         ...style,
       }}
@@ -338,7 +366,7 @@ export default function Dashboard() {
         <nav style={styles.nav}>
           <div style={styles.navContent}>
             <div style={styles.navBrand}>
-              <div style={styles.navLogo}>DI</div>
+              <img src="/divi-logo.png" alt="Divi" style={styles.navLogoImg} />
               <span>Divi Intelligence</span>
             </div>
             <div style={styles.navActions}>
@@ -874,7 +902,7 @@ export default function Dashboard() {
       <nav style={styles.nav}>
         <div style={styles.navContent}>
           <div style={styles.navBrand}>
-            <div style={styles.navLogo}>DI</div>
+            <img src="/divi-logo.png" alt="Divi" style={styles.navLogoImg} />
             <span>Divi Intelligence</span>
           </div>
           <div style={styles.navActions}>
