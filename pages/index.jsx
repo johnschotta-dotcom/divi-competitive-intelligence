@@ -32,6 +32,12 @@ export default function Dashboard() {
     fetchCompetitors();
   }, []);
 
+  const isDivi = (comp) => {
+    const n = String(comp?.name || '').toLowerCase();
+    const w = String(comp?.website || '').toLowerCase();
+    return n === 'divi' || w.includes('divi.fund');
+  };
+
   const fetchCompetitors = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -39,7 +45,14 @@ export default function Dashboard() {
       .select('*')
       .eq('status', 'active')
       .order('threat_score', { ascending: false });
-    setCompetitors(data || []);
+    const list = data || [];
+    list.sort((a, b) => {
+      const aRef = isDivi(a) || a.tier === 'reference' ? 1 : 0;
+      const bRef = isDivi(b) || b.tier === 'reference' ? 1 : 0;
+      if (aRef !== bRef) return bRef - aRef;
+      return (b.threat_score || 0) - (a.threat_score || 0);
+    });
+    setCompetitors(list);
     setLoading(false);
   };
 
@@ -127,6 +140,7 @@ export default function Dashboard() {
   const getTierColor = (tier) => {
     if (!tier) return '#3498db';
     const t = tier.toLowerCase();
+    if (t === 'reference') return '#C523A1';
     if (t === 'critical') return '#e74c3c';
     if (t === 'high') return '#f39c12';
     if (t === 'medium') return '#f1c40f';
@@ -232,7 +246,11 @@ export default function Dashboard() {
                 />
               )}
               <div>
-                <div style={styles.breadcrumb}>COMPETITIVE PROFILE</div>
+                <div style={styles.breadcrumb}>
+                  {isDivi(selected) || selected.tier === 'reference'
+                    ? 'DIVI GOLD STANDARD (OUR COMPANY)'
+                    : 'COMPETITIVE PROFILE · SCORED VS DIVI'}
+                </div>
                 <h1 style={styles.profileTitle}>{selected.name}</h1>
                 {selected.tagline && <p style={styles.tagline}>{selected.tagline}</p>}
                 <a
@@ -272,7 +290,9 @@ export default function Dashboard() {
                 </div>
               </div>
               <div style={{ ...styles.threatBadgeLarge, background: getTierColor(selected.tier) }}>
-                {(selected.tier || 'monitor').toUpperCase()}
+                {isDivi(selected) || selected.tier === 'reference'
+                  ? 'GOLD STANDARD'
+                  : (selected.tier || 'monitor').toUpperCase()}
               </div>
               <div style={styles.estimateNote}>
                 Funding / revenue / sentiment may include free-source estimates
@@ -723,7 +743,9 @@ export default function Dashboard() {
                 <div style={styles.compCardTop}>
                   <h3 style={styles.compCardTitle}>{comp.name}</h3>
                   <span style={{ ...styles.compBadge, background: getTierColor(comp.tier) }}>
-                    {(comp.tier || 'monitor').toUpperCase()}
+                    {isDivi(comp) || comp.tier === 'reference'
+                      ? 'OUR COMPANY'
+                      : (comp.tier || 'monitor').toUpperCase()}
                   </span>
                 </div>
                 {comp.tagline && <p style={styles.cardTagline}>{comp.tagline}</p>}

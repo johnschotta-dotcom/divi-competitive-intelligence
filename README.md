@@ -47,19 +47,19 @@ npm run dev
 - Cron (daily 09:00 UTC): `vercel.json` → `GET /api/intelligence`
 - Single competitor: `GET /api/intelligence?id=<competitor_id>`
 
-## What each profile includes
+## Research pipeline (robust mode)
 
-| Section | Source |
-|---|---|
-| Overview + risk breakdown | Claude + site scrape |
-| Founders + social links | Claude + links found on site |
-| Revenue / funding estimates | Claude from public knowledge (labeled estimates) |
-| Sentiment 0–100 | Claude synthesis of press + positioning |
-| Media / press | Google News RSS (free) + Claude |
-| Tech stack | HTML signatures + Claude |
-| Divi vs them matrix | Claude vs hardcoded Divi baseline in `lib/diviBaseline.js` |
+For each competitor the agent:
 
-Update Divi’s product baseline in [`lib/diviBaseline.js`](lib/diviBaseline.js) as the product evolves.
+1. Scrapes multiple free pages (`/`, `/about`, `/pricing`, `/product`, …)
+2. Pulls Google News RSS headlines
+3. Runs a **Claude research brief** framed against the Divi gold standard
+4. Converts that brief into a **structured dossier** (overview, strengths/weaknesses, founders, funding, sentiment, Divi comparison matrix)
+5. Runs a **repair pass** if required sections are thin
+
+**Divi** is stored as the **reference / gold standard** profile (tier `reference`), not scored as a peer threat. Update [`lib/diviBaseline.js`](lib/diviBaseline.js) whenever product positioning changes, then re-run analysis.
+
+Tip: if a full batch times out on Vercel, re-analyze one company at a time from the profile **Re-analyze** button (`/api/intelligence?id=…`). Concurrency defaults to 2 (`ANALYSIS_CONCURRENCY`).
 
 ## Notes
 
