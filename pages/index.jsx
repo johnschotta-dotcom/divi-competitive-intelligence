@@ -14,6 +14,8 @@ export default function Dashboard() {
   const [weaknesses, setWeaknesses] = useState([]);
   const [risks, setRisks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formData, setFormData] = useState({ name: '', website: '' });
 
   useEffect(() => {
     fetchCompetitors();
@@ -47,50 +49,64 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+  const addCompetitor = async () => {
+    if (!formData.name || !formData.website) return alert('Please fill in all fields');
+
+    const { error } = await supabase.from('competitors').insert({
+      name: formData.name,
+      website: formData.website,
+      status: 'active',
+      tier: 'monitor',
+      threat_score: 50,
+    });
+
+    if (!error) {
+      setFormData({ name: '', website: '' });
+      setShowAddForm(false);
+      fetchCompetitors();
+    }
+  };
+
   const getTierColor = (tier) => {
     if (!tier) return '#888';
-    if (tier.toLowerCase() === 'critical') return '#ff4d6d';
-    if (tier.toLowerCase() === 'high') return '#ff9f1c';
-    if (tier.toLowerCase() === 'medium') return '#ffc107';
-    return '#17a2b8';
+    if (tier.toLowerCase() === 'critical') return '#e74c3c';
+    if (tier.toLowerCase() === 'high') return '#f39c12';
+    if (tier.toLowerCase() === 'medium') return '#f1c40f';
+    return '#3498db';
   };
 
   if (selected) {
     return (
-      <div style={styles.pageContainer}>
-        {/* Header */}
-        <header style={styles.pageHeader}>
-          <button onClick={() => setSelected(null)} style={styles.backButton}>
-            ← Back to List
-          </button>
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={styles.pageTitle}>{selected.name}</h1>
-            <a href={selected.website} target="_blank" rel="noopener noreferrer" style={styles.websiteLink}>
-              {selected.website}
-            </a>
+      <div style={styles.container}>
+        <nav style={styles.nav}>
+          <div style={styles.navContent}>
+            <h1 style={styles.logo}>Divi Intelligence</h1>
+            <button onClick={() => setSelected(null)} style={styles.navButton}>
+              ← Back to Dashboard
+            </button>
           </div>
-        </header>
+        </nav>
 
-        <div style={styles.contentWrapper}>
-          {/* Summary Card */}
-          <div style={styles.summaryCard}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '40px' }}>
-              <div>
-                <div style={styles.metricLabel}>Threat Level</div>
-                <div style={{ ...styles.threatBadge, background: getTierColor(selected.tier) }}>
-                  {selected.tier?.toUpperCase() || 'UNKNOWN'}
-                </div>
-              </div>
-              <div>
-                <div style={styles.metricLabel}>Risk Score</div>
-                <div style={{ fontSize: '2.5em', fontWeight: 'bold', color: getTierColor(selected.tier) }}>
+        <div style={styles.mainContent}>
+          {/* Header */}
+          <div style={styles.profileHeader}>
+            <div>
+              <h1 style={styles.compName}>{selected.name}</h1>
+              <a href={selected.website} target="_blank" rel="noopener noreferrer" style={styles.link}>
+                {selected.website}
+              </a>
+            </div>
+            <div style={styles.headerStats}>
+              <div style={styles.stat}>
+                <div style={styles.statLabel}>Risk Score</div>
+                <div style={{ ...styles.statValue, color: getTierColor(selected.tier) }}>
                   {profile?.risk_score || '—'}/100
                 </div>
               </div>
-              <div>
-                <div style={styles.metricLabel}>Last Updated</div>
-                <div style={{ fontSize: '1.1em', color: '#d0d0d0' }}>
-                  {profile?.analyzed_at ? new Date(profile.analyzed_at).toLocaleDateString() : '—'}
+              <div style={styles.stat}>
+                <div style={styles.statLabel}>Threat Level</div>
+                <div style={{ ...styles.threatBadge, background: getTierColor(selected.tier) }}>
+                  {selected.tier?.toUpperCase()}
                 </div>
               </div>
             </div>
@@ -98,101 +114,77 @@ export default function Dashboard() {
 
           {profile && (
             <>
-              {/* Overview Section */}
-              <section style={styles.section}>
-                <h2 style={styles.sectionTitle}>Overview</h2>
-                <div style={{ background: '#1D1529', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #C523A1' }}>
-                  <p style={{ margin: '0 0 15px 0', fontSize: '1.1em', lineHeight: '1.6' }}>
-                    {profile.overall_summary}
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginTop: '20px' }}>
-                    <div>
-                      <div style={styles.metricLabel}>Target Audience</div>
-                      <p style={{ margin: '8px 0 0 0', fontSize: '1em' }}>{profile.target_audience || 'Unknown'}</p>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Funding Status</div>
-                      <p style={{ margin: '8px 0 0 0', fontSize: '1em' }}>{profile.funding_status || 'Unknown'}</p>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Team Size</div>
-                      <p style={{ margin: '8px 0 0 0', fontSize: '1em' }}>~{profile.team_size_estimate || 'Unknown'}</p>
-                    </div>
+              {/* Overview Card */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>Overview</h2>
+                <p style={styles.overview}>{profile.overall_summary}</p>
+                <div style={styles.metaGrid}>
+                  <div>
+                    <div style={styles.metaLabel}>Target Audience</div>
+                    <div style={styles.metaValue}>{profile.target_audience}</div>
+                  </div>
+                  <div>
+                    <div style={styles.metaLabel}>Funding</div>
+                    <div style={styles.metaValue}>{profile.funding_status || 'Unknown'}</div>
+                  </div>
+                  <div>
+                    <div style={styles.metaLabel}>Team Size</div>
+                    <div style={styles.metaValue}>~{profile.team_size_estimate}</div>
                   </div>
                 </div>
-              </section>
+              </div>
 
               {/* Strengths */}
-              <section style={styles.section}>
-                <h2 style={{ ...styles.sectionTitle, color: '#00d4ff' }}>💪 Strengths</h2>
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>💪 What They Do Well</h2>
                 {strengths.length === 0 ? (
-                  <p style={{ opacity: 0.7 }}>No data available</p>
+                  <p style={styles.empty}>No data available</p>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                  <div style={styles.itemsGrid}>
                     {strengths.map(s => (
-                      <div key={s.id} style={styles.card}>
-                        <div style={{ color: '#00d4ff', fontWeight: '600', marginBottom: '8px' }}>
-                          {s.strength_title}
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.95em', opacity: 0.85 }}>
-                          {s.why_its_strong}
-                        </p>
+                      <div key={s.id} style={styles.item}>
+                        <div style={styles.itemTitle}>{s.strength_title}</div>
+                        <div style={styles.itemDesc}>{s.why_its_strong}</div>
                       </div>
                     ))}
                   </div>
                 )}
-              </section>
+              </div>
 
-              {/* Weaknesses - Divi Opportunities */}
-              <section style={styles.section}>
-                <h2 style={{ ...styles.sectionTitle, color: '#ff4d6d' }}>🎯 Divi Opportunities</h2>
-                <p style={{ opacity: 0.8, marginTop: 0 }}>Where Divi has competitive advantages:</p>
+              {/* Weaknesses */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>🎯 Divi Opportunities</h2>
                 {weaknesses.length === 0 ? (
-                  <p style={{ opacity: 0.7 }}>No data available</p>
+                  <p style={styles.empty}>No data available</p>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                  <div style={styles.itemsGrid}>
                     {weaknesses.map(w => (
-                      <div key={w.id} style={{ ...styles.card, borderLeft: '4px solid #ff4d6d' }}>
-                        <div style={{ color: '#ff4d6d', fontWeight: '600', marginBottom: '8px' }}>
-                          {w.weakness_title}
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.95em', opacity: 0.85 }}>
-                          {w.divi_advantage}
-                        </p>
+                      <div key={w.id} style={{ ...styles.item, borderLeft: '4px solid #e74c3c' }}>
+                        <div style={styles.itemTitle}>{w.weakness_title}</div>
+                        <div style={styles.itemDesc}>{w.divi_advantage}</div>
                       </div>
                     ))}
                   </div>
                 )}
-              </section>
+              </div>
 
-              {/* Risk Assessment */}
-              <section style={styles.section}>
-                <h2 style={{ ...styles.sectionTitle, color: '#ff9f1c' }}>⚠️ Risk Assessment</h2>
+              {/* Risks */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>⚠️ Risk Assessment</h2>
                 {risks.length === 0 ? (
-                  <p style={{ opacity: 0.7 }}>No risks assessed</p>
+                  <p style={styles.empty}>No risks assessed</p>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '15px' }}>
+                  <div style={styles.itemsGrid}>
                     {risks.map(r => (
-                      <div key={r.id} style={{ ...styles.card, borderLeft: `4px solid ${getTierColor(r.risk_level)}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
-                          <div style={{ color: getTierColor(r.risk_level), fontWeight: '600' }}>
-                            {r.risk_category.charAt(0).toUpperCase() + r.risk_category.slice(1)}
-                          </div>
-                          <span style={{ background: getTierColor(r.risk_level), color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75em', fontWeight: '600' }}>
-                            {r.risk_level.toUpperCase()}
-                          </span>
-                        </div>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '0.95em', opacity: 0.85 }}>
-                          {r.description}
-                        </p>
-                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7, fontStyle: 'italic' }}>
-                          💡 {r.mitigation_strategy}
-                        </p>
+                      <div key={r.id} style={{ ...styles.item, borderLeft: `4px solid ${getTierColor(r.risk_level)}` }}>
+                        <div style={styles.itemTitle}>{r.risk_category}</div>
+                        <div style={styles.itemDesc}>{r.description}</div>
+                        <div style={styles.riskMitigation}>💡 {r.mitigation_strategy}</div>
                       </div>
                     ))}
                   </div>
                 )}
-              </section>
+              </div>
             </>
           )}
         </div>
@@ -201,46 +193,80 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={styles.pageContainer}>
-      {/* Header */}
-      <header style={styles.homeHeader}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.homeTitle}>Competitive Intelligence Dashboard</h1>
-          <p style={styles.homeSubtitle}>Real-time analysis of {competitors.length} competitors</p>
+    <div style={styles.container}>
+      <nav style={styles.nav}>
+        <div style={styles.navContent}>
+          <h1 style={styles.logo}>🎯 Divi Intelligence</h1>
+          <button onClick={() => setShowAddForm(true)} style={styles.addBtn}>
+            + Add Competitor
+          </button>
         </div>
-      </header>
+      </nav>
 
-      <div style={styles.contentWrapper}>
-        {loading && <p style={{ textAlign: 'center', padding: '60px 20px', fontSize: '1.1em' }}>Loading competitors...</p>}
+      <div style={styles.mainContent}>
+        <div style={styles.dashboardHeader}>
+          <h2>Competitive Landscape</h2>
+          <p>Monitoring {competitors.length} competitors in real-time</p>
+        </div>
+
+        {showAddForm && (
+          <div style={styles.formCard}>
+            <h3 style={{ margin: '0 0 20px 0' }}>Add New Competitor</h3>
+            <input
+              placeholder="Company Name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              style={styles.input}
+            />
+            <input
+              placeholder="Website (e.g., https://example.com)"
+              value={formData.website}
+              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+              style={styles.input}
+            />
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={addCompetitor} style={{ ...styles.addBtn, flex: 1 }}>
+                Add Competitor
+              </button>
+              <button 
+                onClick={() => setShowAddForm(false)} 
+                style={{ ...styles.addBtn, background: '#555', flex: 1 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading && <p style={{ textAlign: 'center', padding: '60px 20px' }}>Loading...</p>}
 
         {!loading && (
-          <div style={styles.competitorGrid}>
+          <div style={styles.grid}>
             {competitors.map(comp => (
               <div
                 key={comp.id}
                 onClick={() => fetchDetails(comp)}
-                style={styles.competitorCardHome}
+                style={{ ...styles.compCard, borderTopColor: getTierColor(comp.tier), cursor: 'pointer' }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
-                  <h3 style={styles.competitorName}>{comp.name}</h3>
-                  <div style={{ ...styles.threatLabel, background: getTierColor(comp.tier) }}>
+                <div style={styles.compCardHeader}>
+                  <h3 style={styles.compCardName}>{comp.name}</h3>
+                  <span style={{ ...styles.badge, background: getTierColor(comp.tier) }}>
                     {comp.tier?.toUpperCase()}
-                  </div>
+                  </span>
                 </div>
 
-                <div style={styles.riskMeter}>
-                  <div style={styles.riskMeterLabel}>Risk Score</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                    <div style={{ fontSize: '1.8em', fontWeight: 'bold', color: getTierColor(comp.tier) }}>
+                <div style={styles.compCardBody}>
+                  <div style={styles.riskScore}>
+                    <div style={styles.riskScoreValue} style={{ color: getTierColor(comp.tier) }}>
                       {comp.threat_score}
                     </div>
-                    <div style={{ fontSize: '0.9em', opacity: 0.7 }}>/100</div>
+                    <div style={styles.riskScoreLabel}>Risk</div>
                   </div>
                 </div>
 
-                <p style={{ margin: '16px 0 0 0', fontSize: '0.85em', opacity: 0.7 }}>
-                  View details →
-                </p>
+                <div style={styles.compCardFooter}>
+                  View profile →
+                </div>
               </div>
             ))}
           </div>
@@ -251,26 +277,44 @@ export default function Dashboard() {
 }
 
 const styles = {
-  pageContainer: { background: '#0a0806', color: '#f5f5f5', minHeight: '100vh', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
-  pageHeader: { background: 'linear-gradient(135deg, #1D1529 0%, #2d1f42 100%)', borderBottom: '1px solid #3d2d52', padding: '40px 20px', textAlign: 'center' },
-  homeHeader: { background: 'linear-gradient(135deg, #C523A1 0%, #1D1529 100%)', padding: '80px 20px', textAlign: 'center' },
-  headerContent: { maxWidth: '1200px', margin: '0 auto' },
-  backButton: { background: '#C523A1', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.95em', fontWeight: '500', marginBottom: '20px' },
-  pageTitle: { margin: '0 0 12px 0', fontSize: '2.5em', fontWeight: '700', color: '#C523A1' },
-  homeTitle: { margin: 0, fontSize: '3em', fontWeight: '800', color: '#fff' },
-  homeSubtitle: { margin: '12px 0 0 0', fontSize: '1.2em', opacity: 0.9, color: '#fff' },
-  websiteLink: { color: '#00d4ff', textDecoration: 'none', fontSize: '0.95em' },
-  contentWrapper: { maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' },
-  summaryCard: { background: 'linear-gradient(135deg, #2d1f42 0%, #1D1529 100%)', border: '1px solid #3d2d52', borderRadius: '12px', padding: '40px', marginBottom: '40px', boxShadow: '0 4px 20px rgba(197, 35, 161, 0.1)' },
-  metricLabel: { fontSize: '0.85em', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600', marginBottom: '8px' },
-  threatBadge: { display: 'inline-block', color: '#fff', padding: '12px 20px', borderRadius: '8px', fontSize: '1em', fontWeight: '700' },
-  section: { marginBottom: '40px' },
-  sectionTitle: { margin: '0 0 24px 0', fontSize: '1.5em', fontWeight: '700', color: '#fff' },
-  card: { background: '#1D1529', border: '1px solid #3d2d52', borderRadius: '8px', padding: '16px', borderLeft: '4px solid #C523A1', transition: 'all 0.3s ease' },
-  competitorGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' },
-  competitorCardHome: { background: '#2d1f42', border: '1px solid #3d2d52', borderRadius: '12px', padding: '24px', cursor: 'pointer', transition: 'all 0.3s ease', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' },
-  competitorName: { margin: 0, fontSize: '1.3em', fontWeight: '700', color: '#fff' },
-  threatLabel: { color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8em', fontWeight: '700' },
-  riskMeter: { background: '#1D1529', padding: '16px', borderRadius: '8px', marginTop: '16px' },
-  riskMeterLabel: { fontSize: '0.8em', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600', marginBottom: '8px' },
+  container: { background: '#0f0f0f', color: '#f5f5f5', minHeight: '100vh', fontFamily: "'Segoe UI', -apple-system, sans-serif" },
+  nav: { background: 'linear-gradient(90deg, #1a1a1a 0%, #252525 100%)', borderBottom: '1px solid #3d2d52', padding: '20px 0', position: 'sticky', top: 0, zIndex: 100 },
+  navContent: { maxWidth: '1400px', margin: '0 auto', padding: '0 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  logo: { margin: 0, fontSize: '1.5em', fontWeight: '700', color: '#C523A1' },
+  addBtn: { background: '#C523A1', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95em' },
+  navButton: { background: 'transparent', color: '#C523A1', border: '1px solid #C523A1', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' },
+  mainContent: { maxWidth: '1400px', margin: '0 auto', padding: '40px' },
+  dashboardHeader: { marginBottom: '40px', textAlign: 'center' },
+  formCard: { background: '#1a1a1a', border: '1px solid #3d2d52', borderRadius: '12px', padding: '30px', marginBottom: '40px' },
+  input: { width: '100%', padding: '12px 16px', background: '#0f0f0f', border: '1px solid #3d2d52', borderRadius: '8px', color: '#fff', marginBottom: '15px', fontSize: '1em', boxSizing: 'border-box' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' },
+  compCard: { background: '#1a1a1a', border: '1px solid #3d2d52', borderTop: '4px solid', borderRadius: '12px', overflow: 'hidden', transition: 'all 0.3s ease' },
+  compCardHeader: { padding: '20px', borderBottom: '1px solid #3d2d52', display: 'flex', justifyContent: 'space-between', alignItems: 'start' },
+  compCardName: { margin: 0, fontSize: '1.2em', fontWeight: '700' },
+  badge: { color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75em', fontWeight: '700' },
+  compCardBody: { padding: '20px', display: 'flex', justifyContent: 'center' },
+  riskScore: { textAlign: 'center' },
+  riskScoreValue: { fontSize: '2.5em', fontWeight: '700' },
+  riskScoreLabel: { fontSize: '0.9em', opacity: 0.7, marginTop: '4px' },
+  compCardFooter: { padding: '15px 20px', background: 'rgba(197, 35, 161, 0.1)', fontSize: '0.9em', color: '#C523A1', fontWeight: '600' },
+  profileHeader: { background: '#1a1a1a', border: '1px solid #3d2d52', borderRadius: '12px', padding: '40px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'start' },
+  compName: { margin: '0 0 8px 0', fontSize: '2.5em', fontWeight: '700' },
+  link: { color: '#C523A1', textDecoration: 'none', fontSize: '1em' },
+  headerStats: { display: 'flex', gap: '40px' },
+  stat: { textAlign: 'center' },
+  statLabel: { fontSize: '0.9em', opacity: 0.7, marginBottom: '8px' },
+  statValue: { fontSize: '2em', fontWeight: '700' },
+  threatBadge: { color: '#fff', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', display: 'inline-block' },
+  card: { background: '#1a1a1a', border: '1px solid #3d2d52', borderRadius: '12px', padding: '30px', marginBottom: '24px' },
+  cardTitle: { margin: '0 0 20px 0', fontSize: '1.3em', fontWeight: '700' },
+  overview: { fontSize: '1.05em', lineHeight: '1.6', margin: '0 0 20px 0', opacity: 0.95 },
+  metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginTop: '20px' },
+  metaLabel: { fontSize: '0.85em', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600', marginBottom: '8px' },
+  metaValue: { fontSize: '1em', fontWeight: '500' },
+  itemsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' },
+  item: { background: '#0f0f0f', border: '1px solid #3d2d52', borderLeft: '4px solid #C523A1', borderRadius: '8px', padding: '16px' },
+  itemTitle: { fontWeight: '600', marginBottom: '8px', fontSize: '1em' },
+  itemDesc: { fontSize: '0.95em', opacity: 0.85, lineHeight: '1.5' },
+  riskMitigation: { fontSize: '0.9em', opacity: 0.75, marginTop: '12px', fontStyle: 'italic' },
+  empty: { opacity: 0.7, fontStyle: 'italic' },
 };
