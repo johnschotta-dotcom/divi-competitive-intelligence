@@ -1135,6 +1135,13 @@ const styles = {
     fontSize: 14,
     fontWeight: 800,
   },
+  navLogoImg: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    objectFit: 'cover',
+    display: 'block',
+  },
   navActions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   navButton: {
     background: 'transparent',
