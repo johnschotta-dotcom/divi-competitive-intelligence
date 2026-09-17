@@ -1,5 +1,5 @@
 /**
- * FIXED - Handles Claude response correctly
+ * FIXED - Handles extended thinking
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -22,7 +22,6 @@ export default async function handler(req, res) {
     logs.push(`Found ${competitors?.length} competitors`);
     
     if (!competitors || competitors.length === 0) {
-      logs.push('ERROR: No competitors found!');
       return res.status(200).json({ logs, error: 'no competitors' });
     }
 
@@ -35,11 +34,10 @@ export default async function handler(req, res) {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(5000)
     });
-    logs.push(`Fetch status: ${response.status}`);
     
     const html = await response.text();
     const content = html.substring(0, 1000);
-    logs.push(`Content length: ${html.length}, using first 1000 chars`);
+    logs.push(`Content fetched: ${html.length} chars`);
 
     // STEP 3: Call Claude
     logs.push('STEP 3: Calling Claude...');
@@ -54,29 +52,29 @@ Return only JSON: {"risk":50}`,
       }],
     });
 
-    logs.push(`Claude response received`);
-    logs.push(`Response structure: type=${typeof message.content}, length=${message.content?.length}`);
-    logs.push(`First item type: ${message.content[0]?.type}`);
+    logs.push(`Claude response received with ${message.content.length} content blocks`);
     
-    // Fix: Extract text correctly
-    let text;
-    if (message.content[0]?.type === 'text') {
-      text = message.content[0].text;
-    } else {
-      throw new Error(`Unexpected content type: ${message.content[0]?.type}`);
+    // FIX: Find the text block (skip thinking blocks)
+    let text = null;
+    for (const block of message.content) {
+      logs.push(`Block type: ${block.type}`);
+      if (block.type === 'text') {
+        text = block.text;
+        break;
+      }
     }
     
-    logs.push(`Response text: "${text?.substring(0, 200) || 'NULL'}"`);
-
     if (!text) {
-      throw new Error('No text in response');
+      throw new Error('No text block found in response');
     }
+
+    logs.push(`Text received: "${text.substring(0, 200)}"`);
 
     // STEP 4: Parse JSON
     logs.push('STEP 4: Parsing JSON...');
     const jsonMatch = text.match(/\{[^{}]*\}/);
     if (!jsonMatch) {
-      logs.push(`ERROR: No JSON found in: "${text}"`);
+      logs.push(`No JSON in: "${text}"`);
       return res.status(200).json({ logs, error: 'no json' });
     }
 
@@ -99,11 +97,11 @@ Return only JSON: {"risk":50}`,
       return res.status(200).json({ logs, error: error.message });
     }
 
-    logs.push('✅ SUCCESS - Stored in DB');
-    res.status(200).json({ success: true, logs });
+    logs.push('✅ SUCCESS');
+    res.status(200).json({ success: true, logs, competitor: comp.name });
 
   } catch (error) {
-    logs.push(`EXCEPTION: ${error.message}`);
+    logs.push(`ERROR: ${error.message}`);
     res.status(200).json({ success: false, logs, error: error.message });
   }
 }
