@@ -12,7 +12,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null);
   const [strengths, setStrengths] = useState([]);
   const [weaknesses, setWeaknesses] = useState([]);
-  const [risks, setRisks] = useState([]);
+  const [riskBreakdown, setRiskBreakdown] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', website: '' });
@@ -35,17 +35,17 @@ export default function Dashboard() {
     setSelected(comp);
     setLoading(true);
 
-    const [p, s, w, r] = await Promise.all([
+    const [p, s, w, rb] = await Promise.all([
       supabase.from('competitor_profiles').select('*').eq('competitor_id', comp.id).single(),
       supabase.from('competitor_strengths').select('*').eq('competitor_id', comp.id),
       supabase.from('competitor_weaknesses').select('*').eq('competitor_id', comp.id),
-      supabase.from('risk_assessment').select('*').eq('competitor_id', comp.id),
+      supabase.from('risk_score_breakdown').select('*').eq('competitor_id', comp.id).single(),
     ]);
 
     setProfile(p.data);
     setStrengths(s.data || []);
     setWeaknesses(w.data || []);
-    setRisks(r.data || []);
+    setRiskBreakdown(rb.data);
     setLoading(false);
   };
 
@@ -83,6 +83,25 @@ export default function Dashboard() {
     return '#3498db';
   };
 
+  const RiskBar = ({ label, value, notes }) => (
+    <div style={styles.riskBarContainer}>
+      <div style={styles.riskBarLabel}>
+        <span>{label}</span>
+        <span style={styles.riskBarValue}>{value}/100</span>
+      </div>
+      <div style={styles.riskBarTrack}>
+        <div
+          style={{
+            ...styles.riskBarFill,
+            width: `${value}%`,
+            background: value > 70 ? '#e74c3c' : value > 50 ? '#f39c12' : '#f1c40f',
+          }}
+        />
+      </div>
+      {notes && <p style={styles.riskBarNotes}>{notes}</p>}
+    </div>
+  );
+
   if (selected) {
     return (
       <div style={styles.container}>
@@ -100,17 +119,27 @@ export default function Dashboard() {
 
         <div style={styles.mainContent}>
           <div style={styles.profileHeader}>
-            <div style={styles.profileLeft}>
-              <div style={styles.breadcrumb}>COMPETITIVE PROFILE</div>
-              <h1 style={styles.profileTitle}>{selected.name}</h1>
-              <a href={selected.website} target="_blank" rel="noopener noreferrer" style={styles.profileLink}>
-                {selected.website}
-              </a>
+            <div style={styles.profileHeaderLeft}>
+              {selected.logo_url && (
+                <img 
+                  src={selected.logo_url} 
+                  alt={selected.name}
+                  style={styles.companyLogo}
+                  onError={(e) => e.target.style.display = 'none'}
+                />
+              )}
+              <div>
+                <div style={styles.breadcrumb}>COMPETITIVE PROFILE</div>
+                <h1 style={styles.profileTitle}>{selected.name}</h1>
+                <a href={selected.website} target="_blank" rel="noopener noreferrer" style={styles.profileLink}>
+                  {selected.website}
+                </a>
+              </div>
             </div>
-            <div style={styles.profileRight}>
+            <div style={styles.profileHeaderRight}>
               <div style={styles.statBlock}>
-                <div style={styles.statLabel}>Risk Score</div>
-                <div style={{ fontSize: '3em', fontWeight: '900', color: getTierColor(selected.tier) }}>
+                <div style={styles.statLabel}>Overall Risk Score</div>
+                <div style={{ fontSize: '3.5em', fontWeight: '900', color: getTierColor(selected.tier) }}>
                   {profile?.risk_score || '—'}
                 </div>
               </div>
@@ -134,25 +163,22 @@ export default function Dashboard() {
               <div style={styles.card}>
                 <h2 style={styles.cardTitle}>📋 Company Overview</h2>
                 <p style={styles.overviewText}>{profile.overall_summary}</p>
-                <div style={styles.metaGrid}>
-                  <div style={styles.metaItem}>
-                    <div style={styles.metaLabel}>Target Audience</div>
-                    <div style={styles.metaValue}>{profile.target_audience}</div>
-                  </div>
-                  <div style={styles.metaItem}>
-                    <div style={styles.metaLabel}>Funding Status</div>
-                    <div style={styles.metaValue}>{profile.funding_status || 'Unknown'}</div>
-                  </div>
-                  <div style={styles.metaItem}>
-                    <div style={styles.metaLabel}>Team Size</div>
-                    <div style={styles.metaValue}>~{profile.team_size_estimate} people</div>
-                  </div>
-                  <div style={styles.metaItem}>
-                    <div style={styles.metaLabel}>Last Updated</div>
-                    <div style={styles.metaValue}>{new Date(profile.analyzed_at).toLocaleDateString()}</div>
-                  </div>
-                </div>
               </div>
+
+              {/* Risk Score Breakdown */}
+              {riskBreakdown && (
+                <div style={styles.card}>
+                  <h2 style={styles.cardTitle}>📊 How We Score Risk (0-100)</h2>
+                  <p style={styles.scoreExplainer}>
+                    Risk score is calculated from 5 factors: Team (25%), Features (35%), Funding (15%), Market Fit (15%), Growth (10%)
+                  </p>
+                  <RiskBar label="Team & Execution" value={riskBreakdown.team_risk} notes={riskBreakdown.team_notes} />
+                  <RiskBar label="Product Features" value={riskBreakdown.feature_risk} notes={riskBreakdown.feature_notes} />
+                  <RiskBar label="Funding Status" value={riskBreakdown.funding_risk} notes={riskBreakdown.funding_notes} />
+                  <RiskBar label="Market Fit" value={riskBreakdown.market_fit_risk} notes={riskBreakdown.market_notes} />
+                  <RiskBar label="Growth Momentum" value={riskBreakdown.growth_risk} notes={riskBreakdown.growth_notes} />
+                </div>
+              )}
 
               <div style={styles.twoColumnGrid}>
                 <div style={styles.card}>
@@ -192,23 +218,6 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div style={styles.card}>
-                <h2 style={styles.cardTitle}>⚠️ Risk Assessment</h2>
-                {risks.length === 0 ? (
-                  <p style={styles.emptyState}>No risks assessed</p>
-                ) : (
-                  <div style={styles.riskGrid}>
-                    {risks.map(r => (
-                      <div key={r.id} style={{ ...styles.riskCard, borderLeft: `4px solid ${getTierColor(r.risk_level)}` }}>
-                        <div style={styles.riskCategory}>{r.risk_category.toUpperCase()}</div>
-                        <p style={styles.riskDesc}>{r.description}</p>
-                        <div style={styles.riskMitigation}>💡 {r.mitigation_strategy}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -276,6 +285,16 @@ export default function Dashboard() {
                 onClick={() => fetchDetails(comp)}
                 style={{ ...styles.compCard, borderTopColor: getTierColor(comp.tier) }}
               >
+                {comp.logo_url && (
+                  <div style={styles.cardLogoContainer}>
+                    <img 
+                      src={comp.logo_url} 
+                      alt={comp.name}
+                      style={styles.cardLogo}
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  </div>
+                )}
                 <div style={styles.compCardTop}>
                   <h3 style={styles.compCardTitle}>{comp.name}</h3>
                   <span style={{ ...styles.compBadge, background: getTierColor(comp.tier) }}>
@@ -306,8 +325,8 @@ const styles = {
   navContent: { maxWidth: '1400px', margin: '0 auto', padding: '0 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   navBrand: { display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.3em', fontWeight: '700', color: '#C523A1' },
   navLogo: { fontSize: '1.5em' },
-  navButton: { background: 'transparent', color: '#C523A1', border: '1px solid #C523A1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.3s' },
-  addBtn: { background: '#C523A1', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '1em', transition: 'all 0.3s' },
+  navButton: { background: 'transparent', color: '#C523A1', border: '1px solid #C523A1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' },
+  addBtn: { background: '#C523A1', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '1em' },
   deleteBtn: { background: '#e74c3c', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.9em', marginTop: '10px' },
   mainContent: { maxWidth: '1400px', margin: '0 auto', padding: '40px' },
   dashHeader: { marginBottom: '50px', textAlign: 'center' },
@@ -319,15 +338,18 @@ const styles = {
   formButtons: { display: 'flex', gap: '12px' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' },
   compCard: { background: '#1a1a1a', border: '1px solid #2d2d2d', borderTop: '4px solid', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.3s ease', padding: '24px' },
+  cardLogoContainer: { textAlign: 'center', marginBottom: '16px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  cardLogo: { maxHeight: '80px', maxWidth: '100%', objectFit: 'contain' },
   compCardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '20px' },
   compCardTitle: { margin: 0, fontSize: '1.2em', fontWeight: '700' },
   compBadge: { color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75em', fontWeight: '700' },
   compCardScore: { textAlign: 'center', padding: '20px 0' },
   scoreLabel: { fontSize: '0.9em', opacity: 0.6, marginTop: '4px' },
   compCardFooter: { textAlign: 'center', padding: '12px', background: 'rgba(197, 35, 161, 0.1)', borderRadius: '6px', color: '#C523A1', fontWeight: '600', fontSize: '0.9em', marginTop: '16px' },
-  profileHeader: { background: '#1a1a1a', border: '1px solid #2d2d2d', borderRadius: '12px', padding: '40px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
-  profileLeft: {},
-  profileRight: { textAlign: 'right' },
+  profileHeader: { background: '#1a1a1a', border: '1px solid #2d2d2d', borderRadius: '12px', padding: '40px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '40px' },
+  profileHeaderLeft: { display: 'flex', gap: '24px', alignItems: 'flex-start' },
+  profileHeaderRight: { textAlign: 'right' },
+  companyLogo: { height: '100px', objectFit: 'contain' },
   breadcrumb: { fontSize: '0.9em', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600', marginBottom: '8px' },
   profileTitle: { margin: '0 0 8px 0', fontSize: '2.5em', fontWeight: '800' },
   profileLink: { color: '#C523A1', textDecoration: 'none', fontSize: '1em' },
@@ -337,20 +359,18 @@ const styles = {
   card: { background: '#1a1a1a', border: '1px solid #2d2d2d', borderRadius: '12px', padding: '30px', marginBottom: '24px' },
   cardTitle: { margin: '0 0 24px 0', fontSize: '1.3em', fontWeight: '700' },
   overviewText: { fontSize: '1.05em', lineHeight: '1.6', margin: 0, marginBottom: '24px' },
-  metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginTop: '24px' },
-  metaItem: { background: '#0a0a0a', padding: '16px', borderRadius: '8px' },
-  metaLabel: { fontSize: '0.8em', opacity: 0.6, textTransform: 'uppercase', fontWeight: '600', marginBottom: '8px' },
-  metaValue: { fontSize: '1em', fontWeight: '600' },
+  scoreExplainer: { fontSize: '0.95em', opacity: 0.8, marginBottom: '24px', fontStyle: 'italic' },
+  riskBarContainer: { marginBottom: '24px' },
+  riskBarLabel: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95em', fontWeight: '600' },
+  riskBarValue: { color: '#C523A1' },
+  riskBarTrack: { background: '#0a0a0a', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' },
+  riskBarFill: { height: '100%', transition: 'width 0.3s ease' },
+  riskBarNotes: { fontSize: '0.85em', opacity: 0.7, margin: '0', fontStyle: 'italic' },
   twoColumnGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' },
   itemList: { display: 'flex', flexDirection: 'column', gap: '16px' },
   listItem: { background: '#0a0a0a', padding: '16px', borderRadius: '8px', display: 'flex', gap: '16px', borderLeft: '3px solid #C523A1' },
   listItemIcon: { fontSize: '1.2em', fontWeight: '700', color: '#C523A1', minWidth: '24px' },
   listItemTitle: { fontWeight: '600', marginBottom: '4px' },
   listItemDesc: { fontSize: '0.95em', opacity: 0.7 },
-  riskGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' },
-  riskCard: { background: '#0a0a0a', padding: '16px', borderRadius: '8px', borderLeft: '4px solid' },
-  riskCategory: { fontSize: '0.8em', opacity: 0.6, textTransform: 'uppercase', fontWeight: '600', marginBottom: '8px' },
-  riskDesc: { margin: '0 0 12px 0', fontSize: '0.95em', lineHeight: '1.5' },
-  riskMitigation: { fontSize: '0.9em', opacity: 0.7, fontStyle: 'italic' },
   emptyState: { opacity: 0.6, fontStyle: 'italic' },
 };
