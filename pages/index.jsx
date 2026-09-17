@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', website: '' });
-  const [section, setSection] = useState('overview');
+  const [section, setSection] = useState('comparison');
 
   useEffect(() => {
     fetchCompetitors();
@@ -50,7 +50,9 @@ export default function Dashboard() {
       const aRef = isDivi(a) || a.tier === 'reference' ? 1 : 0;
       const bRef = isDivi(b) || b.tier === 'reference' ? 1 : 0;
       if (aRef !== bRef) return bRef - aRef;
-      return (b.threat_score || 0) - (a.threat_score || 0);
+      const aO = a.market_overlap_score ?? a.threat_score ?? 0;
+      const bO = b.market_overlap_score ?? b.threat_score ?? 0;
+      return bO - aO;
     });
     setCompetitors(list);
     setLoading(false);
@@ -58,7 +60,7 @@ export default function Dashboard() {
 
   const fetchDetails = async (comp) => {
     setSelected(comp);
-    setSection('overview');
+    setSection(isDivi(comp) || comp.tier === 'reference' ? 'overview' : 'comparison');
     setDetailLoading(true);
 
     const [p, s, w, rb, f, fr, h, sent, m, tech, cmp] = await Promise.all([
@@ -175,14 +177,14 @@ export default function Dashboard() {
 
   const SectionNav = () => {
     const tabs = [
-      { id: 'overview', label: 'Overview' },
-      { id: 'comparison', label: 'Divi vs Them' },
-      { id: 'founders', label: 'Founders' },
-      { id: 'funding', label: 'Funding' },
-      { id: 'sentiment', label: 'Sentiment' },
+      { id: 'comparison', label: 'Positioning vs Divi' },
+      { id: 'overview', label: 'What their site says' },
+      { id: 'founders', label: 'People (on site)' },
+      { id: 'tech', label: 'Tech signals' },
+      { id: 'history', label: 'History (on site)' },
+      { id: 'funding', label: 'Only if on site' },
+      { id: 'sentiment', label: 'Site tone' },
       { id: 'press', label: 'Press' },
-      { id: 'tech', label: 'Tech Stack' },
-      { id: 'history', label: 'History' },
     ];
     return (
       <div style={styles.sectionNav}>
@@ -204,10 +206,18 @@ export default function Dashboard() {
 
   if (selected) {
     const matrix = Array.isArray(comparison?.feature_matrix) ? comparison.feature_matrix : [];
-    const diviWins = Array.isArray(comparison?.divi_wins) ? comparison.divi_wins : [];
-    const competitorWins = Array.isArray(comparison?.competitor_wins)
+    const whereWeWin = Array.isArray(comparison?.divi_wins) ? comparison.divi_wins : [];
+    const whereWeFallShort = Array.isArray(comparison?.competitor_wins)
       ? comparison.competitor_wins
       : [];
+    const whereSame = Array.isArray(comparison?.where_same) ? comparison.where_same : [];
+    const whereDiff = Array.isArray(comparison?.where_differentiate)
+      ? comparison.where_differentiate
+      : [];
+    const overlap =
+      selected.market_overlap_score ?? comparison?.market_overlap_score ?? selected.threat_score;
+    const trueLabel =
+      selected.true_competitor_label || comparison?.true_competitor_label || selected.tier;
 
     return (
       <div style={styles.container}>
@@ -271,31 +281,25 @@ export default function Dashboard() {
             <div style={styles.profileHeaderRight}>
               <div style={styles.statRow}>
                 <div style={styles.statBlock}>
-                  <div style={styles.statLabel}>Risk</div>
+                  <div style={styles.statLabel}>Market overlap</div>
                   <div style={{ fontSize: '2.6em', fontWeight: 900, color: getTierColor(selected.tier) }}>
-                    {profile?.risk_score ?? selected.threat_score ?? '—'}
+                    {overlap ?? '—'}
                   </div>
                 </div>
                 <div style={styles.statBlock}>
-                  <div style={styles.statLabel}>Sentiment</div>
-                  <div
-                    style={{
-                      fontSize: '2.6em',
-                      fontWeight: 900,
-                      color: sentimentColor(selected.sentiment_score ?? sentiment?.score),
-                    }}
-                  >
-                    {selected.sentiment_score ?? sentiment?.score ?? '—'}
+                  <div style={styles.statLabel}>True competitor?</div>
+                  <div style={{ fontSize: '1.1em', fontWeight: 800, marginTop: 10, textTransform: 'uppercase' }}>
+                    {(trueLabel || '—').replace(/_/g, ' ')}
                   </div>
                 </div>
               </div>
               <div style={{ ...styles.threatBadgeLarge, background: getTierColor(selected.tier) }}>
                 {isDivi(selected) || selected.tier === 'reference'
                   ? 'GOLD STANDARD'
-                  : (selected.tier || 'monitor').toUpperCase()}
+                  : (trueLabel || selected.tier || 'monitor').replace(/_/g, ' ').toUpperCase()}
               </div>
               <div style={styles.estimateNote}>
-                Funding / revenue / sentiment may include free-source estimates
+                Evidence: websites + LinkedIn only (not funding databases or press scrapes)
               </div>
               <button onClick={() => deleteCompetitor(selected.id)} style={styles.deleteBtn}>
                 Delete
@@ -399,39 +403,79 @@ export default function Dashboard() {
 
           {!detailLoading && section === 'comparison' && (
             <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Divi vs {selected.name}</h2>
+              <h2 style={styles.cardTitle}>
+                {isDivi(selected) ? 'Divi reference positioning' : `Website/LinkedIn: Divi vs ${selected.name}`}
+              </h2>
               {!comparison ? (
-                <p style={styles.emptyState}>No comparison yet — run Re-analyze after deploying the deep-profile schema.</p>
+                <p style={styles.emptyState}>
+                  No positioning yet — run Re-analyze (after supabase/03_positioning.sql if columns are missing).
+                </p>
               ) : (
                 <>
+                  <div style={styles.kpiGrid}>
+                    <div style={styles.kpiCard}>
+                      <div style={styles.kpiLabel}>Market overlap w/ Divi</div>
+                      <div style={styles.kpiValue}>{overlap ?? '—'}/100</div>
+                    </div>
+                    <div style={styles.kpiCard}>
+                      <div style={styles.kpiLabel}>True competitor label</div>
+                      <div style={styles.kpiValueSmall}>
+                        {(trueLabel || '—').replace(/_/g, ' ')}
+                      </div>
+                    </div>
+                    <div style={styles.kpiCard}>
+                      <div style={styles.kpiLabel}>Evidence</div>
+                      <div style={styles.kpiValueSmall}>
+                        {comparison.evidence_basis || 'website + LinkedIn only'}
+                      </div>
+                    </div>
+                  </div>
+
                   <p style={styles.overviewText}>{comparison.overall_verdict}</p>
+
                   <div style={styles.twoColumnGrid}>
                     <div style={styles.winBox}>
                       <h3 style={styles.winTitle}>Where Divi wins</h3>
                       <ul style={styles.winList}>
-                        {diviWins.map((x, i) => (
+                        {whereWeWin.map((x, i) => (
                           <li key={i}>{x}</li>
                         ))}
                       </ul>
                     </div>
                     <div style={{ ...styles.winBox, borderColor: '#f39c12' }}>
-                      <h3 style={styles.winTitle}>{selected.name} advantages</h3>
+                      <h3 style={styles.winTitle}>Where Divi falls short</h3>
                       <ul style={styles.winList}>
-                        {competitorWins.map((x, i) => (
+                        {whereWeFallShort.map((x, i) => (
+                          <li key={i}>{x}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div style={{ ...styles.winBox, borderColor: '#3498db' }}>
+                      <h3 style={styles.winTitle}>Where we look the same</h3>
+                      <ul style={styles.winList}>
+                        {(whereSame.length ? whereSame : ['—']).map((x, i) => (
+                          <li key={i}>{x}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div style={{ ...styles.winBox, borderColor: '#9b59b6' }}>
+                      <h3 style={styles.winTitle}>How they differentiate</h3>
+                      <ul style={styles.winList}>
+                        {(whereDiff.length ? whereDiff : ['—']).map((x, i) => (
                           <li key={i}>{x}</li>
                         ))}
                       </ul>
                     </div>
                   </div>
 
-                  <h3 style={{ ...styles.cardTitle, marginTop: 32 }}>Feature matrix</h3>
+                  <h3 style={{ ...styles.cardTitle, marginTop: 32 }}>Capability claims (from websites)</h3>
                   <div style={styles.tableWrap}>
                     <table style={styles.table}>
                       <thead>
                         <tr>
                           <th style={styles.th}>Capability</th>
-                          <th style={styles.th}>Divi</th>
-                          <th style={styles.th}>{selected.name}</th>
+                          <th style={styles.th}>Divi site</th>
+                          <th style={styles.th}>{selected.name} site</th>
                           <th style={styles.th}>Edge</th>
                         </tr>
                       </thead>
@@ -440,7 +484,12 @@ export default function Dashboard() {
                           <tr key={i}>
                             <td style={styles.td}>{row.label || row.feature}</td>
                             <td style={styles.td}>{row.divi}</td>
-                            <td style={styles.td}>{row.competitor}</td>
+                            <td style={styles.td}>
+                              {row.competitor}
+                              {row.evidence ? (
+                                <div style={{ ...styles.listItemDesc, marginTop: 6 }}>{row.evidence}</div>
+                              ) : null}
+                            </td>
                             <td style={styles.td}>
                               <span
                                 style={{
@@ -464,7 +513,7 @@ export default function Dashboard() {
 
                   {comparison.strategic_recommendation && (
                     <div style={styles.recoBox}>
-                      <div style={styles.kpiLabel}>Strategic recommendation</div>
+                      <div style={styles.kpiLabel}>What Divi should do</div>
                       <p style={{ margin: '8px 0 0' }}>{comparison.strategic_recommendation}</p>
                     </div>
                   )}
@@ -687,8 +736,8 @@ export default function Dashboard() {
         <div style={styles.dashHeader}>
           <h1 style={styles.dashTitle}>Competitive landscape</h1>
           <p style={styles.dashSubtitle}>
-            Deep profiles, sentiment, press, tech stack, and Divi head-to-heads across{' '}
-            {competitors.length} competitors
+            Website + LinkedIn positioning vs Divi — who overlaps our market, where we win, where we
+            fall short, and who is truly chasing the same jobs ({competitors.length} companies)
           </p>
         </div>
 
@@ -745,34 +794,37 @@ export default function Dashboard() {
                   <span style={{ ...styles.compBadge, background: getTierColor(comp.tier) }}>
                     {isDivi(comp) || comp.tier === 'reference'
                       ? 'OUR COMPANY'
-                      : (comp.tier || 'monitor').toUpperCase()}
+                      : (comp.true_competitor_label || comp.tier || 'monitor')
+                          .replace(/_/g, ' ')
+                          .toUpperCase()}
                   </span>
                 </div>
                 {comp.tagline && <p style={styles.cardTagline}>{comp.tagline}</p>}
                 <div style={styles.scorePair}>
                   <div style={styles.compCardScore}>
                     <div style={{ fontSize: '2.2em', fontWeight: 900, color: getTierColor(comp.tier) }}>
-                      {comp.threat_score}
+                      {comp.market_overlap_score ?? comp.threat_score ?? '—'}
                     </div>
-                    <div style={styles.scoreLabel}>Risk</div>
+                    <div style={styles.scoreLabel}>Overlap w/ Divi</div>
                   </div>
                   <div style={styles.compCardScore}>
                     <div
                       style={{
-                        fontSize: '2.2em',
-                        fontWeight: 900,
-                        color: sentimentColor(comp.sentiment_score),
+                        fontSize: '1.05em',
+                        fontWeight: 800,
+                        marginTop: 18,
+                        textTransform: 'uppercase',
                       }}
                     >
-                      {comp.sentiment_score ?? '—'}
+                      {(comp.true_competitor_label || '—').replace(/_/g, ' ')}
                     </div>
-                    <div style={styles.scoreLabel}>Sentiment</div>
+                    <div style={styles.scoreLabel}>True competitor?</div>
                   </div>
                 </div>
                 <div style={styles.cardMeta}>
-                  {comp.total_funding_display || comp.revenue_estimate || 'Open profile for deep intel'}
+                  Grounded in website + LinkedIn claims
                 </div>
-                <div style={styles.compCardFooter}>View deep profile →</div>
+                <div style={styles.compCardFooter}>View positioning →</div>
               </div>
             ))}
           </div>

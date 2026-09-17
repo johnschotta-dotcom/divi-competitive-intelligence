@@ -47,19 +47,18 @@ npm run dev
 - Cron (daily 09:00 UTC): `vercel.json` → `GET /api/intelligence`
 - Single competitor: `GET /api/intelligence?id=<competitor_id>`
 
-## Research pipeline (robust mode)
+## Research pipeline (website + LinkedIn positioning)
 
 For each competitor the agent:
 
-1. Scrapes multiple free pages (`/`, `/about`, `/pricing`, `/product`, …)
-2. Pulls Google News RSS headlines
-3. Runs a **Claude research brief** framed against the Divi gold standard
-4. Converts that brief into a **structured dossier** (overview, strengths/weaknesses, founders, funding, sentiment, Divi comparison matrix)
-5. Runs a **repair pass** if required sections are thin
+1. Scrapes **Divi’s** website (+ LinkedIn if linked) as the live gold-standard corpus
+2. Scrapes the **competitor’s** website pages + LinkedIn URL found on-site
+3. Asks Claude to compare **only those surfaces** — no invented funding/press
+4. Outputs: market overlap score, true-competitor label (`direct|adjacent|tangential|not_a_competitor`), where Divi wins / falls short / looks the same / they differentiate, plus a capability matrix from website claims
 
-**Divi** is stored as the **reference / gold standard** profile (tier `reference`), not scored as a peer threat. Update [`lib/diviBaseline.js`](lib/diviBaseline.js) whenever product positioning changes, then re-run analysis.
+Also run [`supabase/03_positioning.sql`](supabase/03_positioning.sql) once for new overlap columns.
 
-Tip: if a full batch times out on Vercel, re-analyze one company at a time from the profile **Re-analyze** button (`/api/intelligence?id=…`). Concurrency defaults to 2 (`ANALYSIS_CONCURRENCY`).
+Tip: re-analyze one company at a time if a full batch times out (`ANALYSIS_CONCURRENCY` defaults to 2).
 
 ## Notes
 
