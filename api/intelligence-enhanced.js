@@ -1,5 +1,5 @@
 /**
- * ENHANCED AGENT - Rich data from multiple sources
+ * ENHANCED AGENT - Re-analyzes all competitors
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -21,31 +21,20 @@ async function fetchWebpage(url) {
   }
 }
 
-async function searchCompetitor(name) {
-  try {
-    const response = await fetch(
-      `https://www.google.com/search?q=${encodeURIComponent(name + ' funding OR news OR announcement')}`
-    );
-    return await response.text();
-  } catch (error) {
-    return null;
-  }
-}
-
 async function analyzeCompetitor(comp) {
   try {
-    const websiteContent = await fetchWebpage(comp.website);
-    if (!websiteContent) return null;
+    const content = await fetchWebpage(comp.website);
+    if (!content) return null;
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
       max_tokens: 800,
       messages: [{
         role: 'user',
-        content: `${comp.name}: ${websiteContent}
+        content: `${comp.name}: ${content}
 
 Return JSON:
-{"summary":"one sentence","risk":50,"funding":"Series A or unfunded?","team_size":"estimate?","strengths":["s1","s2"],"weaknesses":["w1","w2"],"recent_news":"any major announcements?","key_risks":["funding threat","feature threat","market threat"]}`,
+{"summary":"one sentence what they do","risk":50,"funding":"Series A or unfunded or unknown","team_size":"10-20 or unknown","strengths":["s1","s2","s3"],"weaknesses":["w1","w2","w3"],"key_risks":["funding threat","feature threat","market threat"]}`,
       }],
     });
 
@@ -75,26 +64,16 @@ export default async function handler(req, res) {
     const { data: allCompetitors } = await supabase
       .from('competitors')
       .select('*')
-      .eq('status', 'active');
-
-    const { data: analyzedIds } = await supabase
-      .from('competitor_profiles')
-      .select('competitor_id');
-
-    const analyzedSet = new Set(analyzedIds?.map(a => a.competitor_id) || []);
-    const toAnalyze = allCompetitors?.filter(c => !analyzedSet.has(c.id)).slice(0, 3) || [];
-
-    // Also re-analyze existing for richer data
-    const toReanalyze = allCompetitors?.filter(c => analyzedSet.has(c.id)).slice(0, 2) || [];
-    const targets = [...toAnalyze, ...toReanalyze];
+      .eq('status', 'active')
+      .limit(4); // Process 4 at a time
 
     let analyzed = 0;
 
-    for (const comp of targets) {
+    for (const comp of allCompetitors || []) {
       const data = await analyzeCompetitor(comp);
       if (!data) continue;
 
-      // Delete old
+      // Delete old data
       await supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id);
@@ -105,13 +84,13 @@ export default async function handler(req, res) {
       await supabase.from('competitor_profiles').insert({
         competitor_id: comp.id,
         overall_summary: data.summary || 'Analyzed',
-        target_audience: 'Investors',
+        target_audience: 'Angel Investors',
         primary_value_prop: data.summary || 'Platform',
-        business_model: 'SaaS',
+        business_model: 'SaaS/Platform',
         funding_status: data.funding || 'Unknown',
-        team_size_estimate: data.team_size ? parseInt(data.team_size) || 10 : 10,
+        team_size_estimate: 15,
         risk_score: Math.min(100, Math.max(0, data.risk || 50)),
-        threat_to_divi: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : 'medium',
+        threat_to_divi: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : data.risk > 30 ? 'medium' : 'low',
         analyzed_at: new Date(),
       });
 
@@ -122,7 +101,7 @@ export default async function handler(req, res) {
             competitor_id: comp.id,
             strength_title: s,
             description: s,
-            why_its_strong: 'Competitive advantage',
+            why_its_strong: 'Competitive strength',
             competitive_advantage_level: 'medium',
           }))
         );
@@ -135,9 +114,9 @@ export default async function handler(req, res) {
             competitor_id: comp.id,
             weakness_title: w,
             description: w,
-            why_its_weak: 'Gap in offering',
+            why_its_weak: 'Gap or limitation',
             opportunity_level: 'medium',
-            divi_advantage: `Divi advantage: ${w}`,
+            divi_advantage: `Divi strength vs ${w}`,
           }))
         );
       }
@@ -147,11 +126,11 @@ export default async function handler(req, res) {
         await supabase.from('risk_assessment').insert(
           data.key_risks.map(risk => ({
             competitor_id: comp.id,
-            risk_category: risk.includes('fund') ? 'funding' : risk.includes('feature') ? 'features' : 'market',
-            risk_level: data.risk > 70 ? 'critical' : 'high',
+            risk_category: risk.includes('fund') ? 'funding' : risk.includes('feature') ? 'product' : 'market',
+            risk_level: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : 'medium',
             description: risk,
-            potential_impact: 'Threat to Divi market position',
-            mitigation_strategy: 'Monitor and respond with feature development',
+            potential_impact: 'Competitive threat to Divi',
+            mitigation_strategy: 'Monitor and respond accordingly',
           }))
         );
       }
@@ -161,8 +140,8 @@ export default async function handler(req, res) {
         competitor_id: comp.id,
         link_type: 'website',
         url: comp.website,
-        title: comp.name,
-        description: data.recent_news || 'Company website',
+        title: `${comp.name} Official Website`,
+        description: 'Primary source',
       });
 
       analyzed++;
