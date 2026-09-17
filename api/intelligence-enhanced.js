@@ -1,245 +1,220 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Enhanced Competitive Intelligence Agent
+ * Performs deep analysis: strengths, weaknesses, risk assessment
+ * Deploy to: Vercel Functions (api/intelligence-enhanced.js)
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  'https://znusgttwjfuuzhycuvhs.supabase.co',
-  'sb_publishable_uBx9cLk0PYHlOz5-kE3nLA_W8I2jQlq'
-);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-export default function CompetitiveIntelligenceDashboard() {
-  const [competitors, setCompetitors] = useState([]);
-  const [selectedCompetitor, setSelectedCompetitor] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [strengths, setStrengths] = useState([]);
-  const [weaknesses, setWeaknesses] = useState([]);
-  const [risks, setRisks] = useState([]);
-  const [notes, setNotes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [newNote, setNewNote] = useState('');
-
-  useEffect(() => {
-    fetchCompetitors();
-  }, []);
-
-  const fetchCompetitors = async () => {
-    const { data } = await supabase
-      .from('competitors')
-      .select('*')
-      .eq('status', 'active')
-      .order('threat_score', { ascending: false });
-    setCompetitors(data || []);
-    setLoading(false);
-  };
-
-  const fetchCompetitorDetails = async (competitor) => {
-    setSelectedCompetitor(competitor);
-    setLoading(true);
-
-    const [profileData, strengthsData, weaknessesData, risksData, notesData] = await Promise.all([
-      supabase.from('competitor_profiles').select('*').eq('competitor_id', competitor.id).single(),
-      supabase.from('competitor_strengths').select('*').eq('competitor_id', competitor.id),
-      supabase.from('competitor_weaknesses').select('*').eq('competitor_id', competitor.id),
-      supabase.from('risk_assessment').select('*').eq('competitor_id', competitor.id),
-      supabase.from('manual_notes').select('*').eq('competitor_id', competitor.id),
-    ]);
-
-    setProfile(profileData.data);
-    setStrengths(strengthsData.data || []);
-    setWeaknesses(weaknessesData.data || []);
-    setRisks(risksData.data || []);
-    setNotes(notesData.data || []);
-    setLoading(false);
-  };
-
-  const addNote = async () => {
-    if (!newNote.trim()) return;
-
-    const { error } = await supabase.from('manual_notes').insert({
-      competitor_id: selectedCompetitor.id,
-      note_text: newNote,
-      category: 'observation',
-      source: 'manual',
-    });
-
-    if (!error) {
-      setNewNote('');
-      fetchCompetitorDetails(selectedCompetitor);
-    }
-  };
-
-  const getTierColor = (tier) => {
-    const colors = { critical: '#ff4d6d', high: '#ff9f1c', medium: '#ffc107', emerging: '#17a2b8', monitor: '#888' };
-    return colors[tier] || '#888';
-  };
-
-  if (selectedCompetitor && !loading) {
-    return (
-      <div style={styles.container}>
-        <header style={styles.header}>
-          <button onClick={() => { setSelectedCompetitor(null); fetchCompetitors(); }} style={styles.backBtn}>
-            ← Back to Competitors
-          </button>
-          <h1 style={{ color: '#C523A1', margin: '10px 0' }}>{selectedCompetitor.name}</h1>
-        </header>
-
-        <div style={styles.profileContainer}>
-          <div style={styles.profileHeader}>
-            <div>
-              <p><strong>Website:</strong> <a href={selectedCompetitor.website} target="_blank" rel="noopener noreferrer">{selectedCompetitor.website}</a></p>
-              <p><strong>Threat Level:</strong> <span style={{ ...styles.threatBadge, background: getTierColor(selectedCompetitor.tier) }}>{selectedCompetitor.tier.toUpperCase()}</span></p>
-              <p><strong>Threat Score:</strong> {selectedCompetitor.threat_score}/100</p>
-            </div>
-            {profile && (
-              <div>
-                <p><strong>Credibility:</strong> {profile.credibility_score}/100</p>
-                <p><strong>Risk Score:</strong> {profile.risk_score}/100</p>
-                <p><strong>Last Analyzed:</strong> {new Date(profile.analyzed_at).toLocaleDateString()}</p>
-              </div>
-            )}
-          </div>
-
-          {profile && (
-            <>
-              <section style={styles.section}>
-                <h2 style={{ color: '#C523A1' }}>Overview</h2>
-                <p><strong>Summary:</strong> {profile.overall_summary}</p>
-                <p><strong>Target Audience:</strong> {profile.target_audience}</p>
-                <p><strong>Value Proposition:</strong> {profile.primary_value_prop}</p>
-                <p><strong>Business Model:</strong> {profile.business_model}</p>
-              </section>
-
-              <section style={styles.section}>
-                <h2 style={{ color: '#00d4ff' }}>Strengths (What They Do Well)</h2>
-                {strengths.length === 0 ? (
-                  <p>No strengths recorded yet. Run agent to analyze.</p>
-                ) : (
-                  strengths.map((s) => (
-                    <div key={s.id} style={styles.strengthBox}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#00d4ff' }}>{s.strength_title}</h3>
-                      <p><strong>What it is:</strong> {s.description}</p>
-                      <p><strong>Why it's strong:</strong> {s.why_its_strong}</p>
-                      <p><strong>Competitive Advantage:</strong> <span style={{ background: s.competitive_advantage_level === 'high' ? '#ff4d6d' : '#ffc107', padding: '4px 8px', borderRadius: '4px', color: '#fff', fontSize: '0.85em' }}>{s.competitive_advantage_level}</span></p>
-                    </div>
-                  ))
-                )}
-              </section>
-
-              <section style={styles.section}>
-                <h2 style={{ color: '#ff4d6d' }}>Weaknesses (Divi Advantages)</h2>
-                {weaknesses.length === 0 ? (
-                  <p>No weaknesses recorded yet. Run agent to analyze.</p>
-                ) : (
-                  weaknesses.map((w) => (
-                    <div key={w.id} style={styles.weaknessBox}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#ff4d6d' }}>{w.weakness_title}</h3>
-                      <p><strong>Gap:</strong> {w.description}</p>
-                      <p><strong>Why it's weak:</strong> {w.why_its_weak}</p>
-                      <p><strong>Divi Advantage:</strong> {w.divi_advantage}</p>
-                      <p><strong>Opportunity Level:</strong> <span style={{ background: w.opportunity_level === 'high' ? '#00d4ff' : '#17a2b8', padding: '4px 8px', borderRadius: '4px', color: '#fff', fontSize: '0.85em' }}>{w.opportunity_level}</span></p>
-                    </div>
-                  ))
-                )}
-              </section>
-
-              <section style={styles.section}>
-                <h2 style={{ color: '#ff9f1c' }}>Risk Assessment</h2>
-                {risks.length === 0 ? (
-                  <p>No risks recorded yet. Run agent to analyze.</p>
-                ) : (
-                  risks.map((r) => (
-                    <div key={r.id} style={styles.riskBox}>
-                      <h3 style={{ margin: '0 0 10px 0' }}>{r.risk_category}</h3>
-                      <p><strong>Risk Level:</strong> <span style={{ background: getTierColor(r.risk_level), padding: '4px 8px', borderRadius: '4px', color: '#fff', fontSize: '0.85em' }}>{r.risk_level.toUpperCase()}</span></p>
-                      <p><strong>Description:</strong> {r.description}</p>
-                      <p><strong>Potential Impact:</strong> {r.potential_impact}</p>
-                      <p><strong>Mitigation:</strong> {r.mitigation_strategy}</p>
-                    </div>
-                  ))
-                )}
-              </section>
-
-              <section style={styles.section}>
-                <h2 style={{ color: '#C523A1' }}>Research Notes</h2>
-                <div style={styles.notesArea}>
-                  {notes.map((n) => (
-                    <div key={n.id} style={styles.noteBox}>
-                      <p style={{ margin: '0 0 5px 0', fontSize: '0.85em', opacity: 0.7 }}>{new Date(n.added_at).toLocaleDateString()}</p>
-                      <p style={{ margin: '0' }}>{n.note_text}</p>
-                      {n.source_url && <a href={n.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', color: '#C523A1' }}>View Source</a>}
-                    </div>
-                  ))}
-                </div>
-
-                <div style={styles.addNoteForm}>
-                  <textarea
-                    placeholder="Add a research note... (LinkedIn findings, article, observation, etc.)"
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    style={{ width: '100%', padding: '10px', background: '#1D1529', border: '1px solid #3d2d52', borderRadius: '6px', color: '#fff', minHeight: '80px', boxSizing: 'border-box' }}
-                  />
-                  <button onClick={addNote} style={{ marginTop: '10px', padding: '10px 20px', background: '#C523A1', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-                    Add Note
-                  </button>
-                </div>
-              </section>
-            </>
-          )}
-        </div>
-      </div>
-    );
+// Fetch webpage
+async function fetchWebpage(url) {
+  try {
+    const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const text = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return text.substring(0, 5000);
+  } catch (error) {
+    return null;
   }
-
-  return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={{ color: '#C523A1' }}>🎯 Divi Competitive Intelligence</h1>
-        <p style={{ opacity: 0.8 }}>Deep analysis of {competitors.length} competitors</p>
-      </header>
-
-      {loading && <p style={{ textAlign: 'center', padding: '40px' }}>Loading competitors...</p>}
-
-      {!loading && (
-        <div style={styles.competitorGrid}>
-          {competitors.map((comp) => (
-            <div
-              key={comp.id}
-              onClick={() => fetchCompetitorDetails(comp)}
-              style={{ ...styles.competitorCard, borderLeftColor: getTierColor(comp.tier), cursor: 'pointer' }}
-            >
-              <div style={styles.cardHeader}>
-                <h3 style={styles.competitorName}>{comp.name}</h3>
-                <span style={{ ...styles.threatBadge, background: getTierColor(comp.tier) }}>
-                  {comp.tier.toUpperCase()}
-                </span>
-              </div>
-              <p style={styles.cardText}><strong>Website:</strong> <a href={comp.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>{comp.website}</a></p>
-              <p style={styles.cardText}><strong>Threat Score:</strong> <strong style={{ color: getTierColor(comp.tier) }}>{comp.threat_score}/100</strong></p>
-              <p style={{ ...styles.cardText, fontSize: '0.9em', opacity: 0.7 }}>Click to see detailed profile →</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
-const styles = {
-  container: { background: '#0a0806', color: '#f5f5f5', minHeight: '100vh', padding: '40px', fontFamily: 'system-ui' },
-  header: { textAlign: 'center', marginBottom: '40px', borderBottom: '3px solid #C523A1', paddingBottom: '20px' },
-  backBtn: { padding: '10px 20px', background: '#C523A1', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1em', marginBottom: '20px' },
-  competitorGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px', maxWidth: '1400px', margin: '0 auto' },
-  competitorCard: { background: '#2d1f42', border: '1px solid #3d2d52', borderLeft: '5px solid', borderRadius: '8px', padding: '20px', transition: 'transform 0.2s, boxShadow 0.2s' },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' },
-  competitorName: { margin: '0', color: '#fff', fontSize: '1.3em' },
-  cardText: { margin: '8px 0', color: '#d0d0d0', fontSize: '0.95em' },
-  threatBadge: { padding: '6px 12px', borderRadius: '20px', fontSize: '0.8em', fontWeight: '600', color: '#fff' },
-  profileContainer: { maxWidth: '1200px', margin: '0 auto' },
-  profileHeader: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', background: '#2d1f42', padding: '30px', borderRadius: '8px', marginBottom: '30px' },
-  section: { background: '#2d1f42', padding: '30px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #3d2d52' },
-  strengthBox: { background: '#1D1529', padding: '20px', borderRadius: '6px', marginBottom: '15px', borderLeft: '4px solid #00d4ff' },
-  weaknessBox: { background: '#1D1529', padding: '20px', borderRadius: '6px', marginBottom: '15px', borderLeft: '4px solid #ff4d6d' },
-  riskBox: { background: '#1D1529', padding: '20px', borderRadius: '6px', marginBottom: '15px', borderLeft: '4px solid #ff9f1c' },
-  notesArea: { marginBottom: '20px' },
-  noteBox: { background: '#1D1529', padding: '15px', borderRadius: '6px', marginBottom: '10px', borderLeft: '3px solid #C523A1' },
-  addNoteForm: { background: '#1D1529', padding: '20px', borderRadius: '6px', marginTop: '20px' },
-};
+// Deep competitive analysis
+async function analyzeCompetitorProfile(competitor) {
+  const pageContent = await fetchWebpage(competitor.website);
+  if (!pageContent) return null;
+
+  const message = await anthropic.messages.create({
+    model: 'claude-opus-5',
+    max_tokens: 2000,
+    messages: [{
+      role: 'user',
+      content: `You are a competitive intelligence expert analyzing ${competitor.name} for Divi (divi.fund), an AI-native angel investor platform with:
+- Portfolio tracking from cap tables (Carta, AngelList, Cake, Sydecar)
+- AI Intelligence Dashboard for analyzing founder updates
+- Syndicate creation tools at $99/mo
+- Investor education content
+- Hustle Fund partnership for deal flow
+
+Analyze this competitor deeply:
+
+Website Content:
+${pageContent}
+
+Return ONLY valid JSON (no markdown, no extra text):
+{
+  "overall_summary": "1-2 sentence summary of what they do",
+  "target_audience": "Who they target",
+  "primary_value_prop": "Main value proposition",
+  "business_model": "How they make money",
+  "team_credibility": "Assessment of founding team credibility (0-100)",
+  "strengths": [
+    {
+      "title": "Feature/capability name",
+      "description": "What it is",
+      "why_strong": "Why it's strong",
+      "competitive_advantage": "high/medium/low - how much of an advantage vs Divi"
+    }
+  ],
+  "weaknesses": [
+    {
+      "title": "Gap or weak area",
+      "description": "What it is",
+      "why_weak": "Why it's weak",
+      "opportunity": "high/medium/low - how much Divi can exploit this"
+    }
+  ],
+  "risk_to_divi": {
+    "overall_risk": "critical/high/medium/low",
+    "risk_score": 0-100,
+    "reasoning": "Why they are/aren't a threat",
+    "key_risks": ["risk1", "risk2"],
+    "mitigation": "What Divi should do"
+  }
+}`,
+    }],
+  });
+
+  try {
+    const jsonMatch = message.content[0].text.match(/\{[\s\S]*\}/);
+    return JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+  } catch (error) {
+    return null;
+  }
+}
+
+// Store profile and analysis in database
+async function storeCompetitorProfile(competitor, analysis) {
+  if (!analysis) return;
+
+  try {
+    // Store main profile
+    const { data: profile, error: profileError } = await supabase
+      .from('competitor_profiles')
+      .upsert({
+        competitor_id: competitor.id,
+        overall_summary: analysis.overall_summary,
+        target_audience: analysis.target_audience,
+        primary_value_prop: analysis.primary_value_prop,
+        business_model: analysis.business_model,
+        credibility_score: analysis.team_credibility,
+        risk_score: analysis.risk_to_divi?.risk_score || 50,
+        threat_to_divi: analysis.risk_to_divi?.overall_risk || 'medium',
+        risk_reasoning: analysis.risk_to_divi?.reasoning,
+        analyzed_at: new Date(),
+      }, { onConflict: 'competitor_id' });
+
+    if (profileError) console.error('Error storing profile:', profileError);
+
+    // Store strengths
+    if (analysis.strengths && analysis.strengths.length > 0) {
+      const strengthsData = analysis.strengths.map(s => ({
+        competitor_id: competitor.id,
+        strength_title: s.title,
+        description: s.description,
+        why_its_strong: s.why_strong,
+        competitive_advantage_level: s.competitive_advantage,
+      }));
+
+      // Delete old strengths first
+      await supabase.from('competitor_strengths').delete().eq('competitor_id', competitor.id);
+
+      const { error: strengthsError } = await supabase.from('competitor_strengths').insert(strengthsData);
+      if (strengthsError) console.error('Error storing strengths:', strengthsError);
+    }
+
+    // Store weaknesses
+    if (analysis.weaknesses && analysis.weaknesses.length > 0) {
+      const weaknessesData = analysis.weaknesses.map(w => ({
+        competitor_id: competitor.id,
+        weakness_title: w.title,
+        description: w.description,
+        why_its_weak: w.why_weak,
+        opportunity_level: w.opportunity,
+        divi_advantage: `Divi can exploit this by being stronger in ${w.title}`,
+      }));
+
+      // Delete old weaknesses first
+      await supabase.from('competitor_weaknesses').delete().eq('competitor_id', competitor.id);
+
+      const { error: weaknessesError } = await supabase.from('competitor_weaknesses').insert(weaknessesData);
+      if (weaknessesError) console.error('Error storing weaknesses:', weaknessesError);
+    }
+
+    // Store risk assessment
+    if (analysis.risk_to_divi?.key_risks) {
+      const riskData = analysis.risk_to_divi.key_risks.map(risk => ({
+        competitor_id: competitor.id,
+        risk_category: 'competitive_positioning',
+        risk_level: analysis.risk_to_divi.overall_risk,
+        description: risk,
+        potential_impact: 'Threat to Divi market share',
+        mitigation_strategy: analysis.risk_to_divi.mitigation,
+      }));
+
+      const { error: riskError } = await supabase.from('risk_assessment').insert(riskData);
+      if (riskError) console.error('Error storing risk:', riskError);
+    }
+
+    // Update competitor threat score
+    await supabase
+      .from('competitors')
+      .update({
+        threat_score: analysis.risk_to_divi?.risk_score || 50,
+        tier: analysis.risk_to_divi?.overall_risk || 'medium',
+        last_analyzed: new Date(),
+      })
+      .eq('id', competitor.id);
+
+  } catch (error) {
+    console.error('Error in storeCompetitorProfile:', error);
+  }
+}
+
+// Main handler
+export default async function handler(req, res) {
+  try {
+    console.log('🔬 Starting Enhanced Competitive Analysis...');
+
+    const { data: competitors } = await supabase
+      .from('competitors')
+      .select('*')
+      .eq('status', 'active');
+
+    let analyzed = 0;
+    for (const competitor of competitors || []) {
+      console.log(`Analyzing ${competitor.name}...`);
+      
+      const analysis = await analyzeCompetitorProfile(competitor);
+      if (analysis) {
+        await storeCompetitorProfile(competitor, analysis);
+        analyzed++;
+      }
+      
+      // Small delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    console.log('✅ Enhanced analysis complete!');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Enhanced competitive analysis completed',
+      competitors_analyzed: analyzed,
+      timestamp: new Date(),
+    });
+
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
