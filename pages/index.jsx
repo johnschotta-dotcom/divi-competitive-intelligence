@@ -194,7 +194,11 @@ export default function Dashboard() {
     const hasFunding = fundingRounds.length > 0 ||
       (selected.revenue_estimate && !/not stated/i.test(selected.revenue_estimate));
     const hasHistory = history.length > 0;
-    const hasTone = sentiment?.summary && !/pending|insufficient|reference messaging/i.test(sentiment.summary);
+    const hasTone =
+      sentiment &&
+      (sentiment.score != null ||
+        (sentiment.summary &&
+          !/pending|insufficient/i.test(sentiment.summary)));
     const hasPress = media.some((m) => m.source_name && !['crawled_page', 'website_heading'].includes(m.source_name));
     const tabs = [
       { id: 'comparison', label: 'Positioning vs Divi' },
@@ -634,12 +638,16 @@ export default function Dashboard() {
 
           {!detailLoading && section === 'sentiment' && (
             <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Social / market sentiment</h2>
+              <h2 style={styles.cardTitle}>Site tone</h2>
               {!sentiment ? (
-                <p style={styles.emptyState}>No sentiment score yet</p>
+                <p style={styles.emptyState}>No site tone yet — re-analyze this competitor.</p>
               ) : (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 16 }}>
+                  <p style={{ ...styles.estimateNote, marginBottom: 16 }}>
+                    Scores how clear and confident their <strong>website messaging</strong> is (value
+                    prop, specificity, crawlable depth) — not Twitter/social listening.
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 8 }}>
                     <div
                       style={{
                         fontSize: '3.5em',
@@ -647,22 +655,44 @@ export default function Dashboard() {
                         color: sentimentColor(sentiment.score),
                       }}
                     >
-                      {sentiment.score}
+                      {sentiment.score ?? '—'}
                     </div>
                     <div style={{ opacity: 0.7 }}>/ 100</div>
-                  </div>
-                  <p style={styles.overviewText}>{sentiment.summary}</p>
-                  <div style={styles.twoColumnGrid}>
-                    <div>
-                      <div style={styles.kpiLabel}>Positive themes</div>
-                      <p>{sentiment.positive_themes || '—'}</p>
-                    </div>
-                    <div>
-                      <div style={styles.kpiLabel}>Negative themes</div>
-                      <p>{sentiment.negative_themes || '—'}</p>
+                    <div style={{ ...styles.kpiValueSmall, marginLeft: 8 }}>
+                      {(sentiment.score ?? 0) >= 80
+                        ? 'Strong'
+                        : (sentiment.score ?? 0) >= 60
+                          ? 'Solid'
+                          : (sentiment.score ?? 0) >= 40
+                            ? 'Mixed'
+                            : 'Weak / thin'}
                     </div>
                   </div>
-                  <p style={styles.estimateNote}>Source: {sentiment.sample_sources}</p>
+                  <p style={{ ...styles.estimateNote, marginBottom: 16 }}>
+                    80–100 strong · 60–79 solid · 40–59 mixed · 0–39 weak/thin
+                  </p>
+                  {sentiment.summary ? (
+                    <p style={styles.overviewText}>{sentiment.summary}</p>
+                  ) : null}
+                  {(sentiment.positive_themes || sentiment.negative_themes) && (
+                    <div style={styles.twoColumnGrid}>
+                      {sentiment.positive_themes ? (
+                        <div>
+                          <div style={styles.kpiLabel}>What reads clearly</div>
+                          <p>{sentiment.positive_themes}</p>
+                        </div>
+                      ) : null}
+                      {sentiment.negative_themes ? (
+                        <div>
+                          <div style={styles.kpiLabel}>Messaging gaps</div>
+                          <p>{sentiment.negative_themes}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                  {sentiment.sample_sources ? (
+                    <p style={styles.estimateNote}>Source: {sentiment.sample_sources}</p>
+                  ) : null}
                 </>
               )}
             </div>
