@@ -1,6 +1,5 @@
 /**
- * Enhanced Competitive Intelligence Agent - OPTIMIZED
- * Faster parallel processing with timeout handling
+ * TEST VERSION - Shows errors clearly
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -9,18 +8,9 @@ import { createClient } from '@supabase/supabase-js';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// Fetch webpage
 async function fetchWebpage(url) {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(url, { 
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    
+    const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
     if (!response.ok) return null;
     const html = await response.text();
     const text = html
@@ -31,14 +21,16 @@ async function fetchWebpage(url) {
       .trim();
     return text.substring(0, 3000);
   } catch (error) {
+    console.error(`Fetch error for ${url}:`, error.message);
     return null;
   }
 }
 
-// Deep competitive analysis with timeout
 async function analyzeCompetitorProfile(competitor) {
   try {
     const pageContent = await fetchWebpage(competitor.website);
+    console.log(`Fetched ${competitor.name}: ${pageContent ? pageContent.length + ' chars' : 'NULL'}`);
+    
     if (!pageContent) return null;
 
     const message = await anthropic.messages.create({
@@ -46,42 +38,43 @@ async function analyzeCompetitorProfile(competitor) {
       max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `Analyze ${competitor.name} for Divi (AI-native angel investor platform).
-Website: ${pageContent}
+        content: `Analyze ${competitor.name}.
+${pageContent}
 
-Return ONLY JSON (no markdown):
+Return ONLY JSON:
 {
-  "overall_summary": "1-2 sentence summary",
-  "target_audience": "Who they target",
-  "primary_value_prop": "Main value prop",
-  "business_model": "How they make money",
+  "overall_summary": "summary",
+  "target_audience": "audience",
+  "primary_value_prop": "prop",
+  "business_model": "model",
   "team_credibility": 50,
-  "strengths": [{"title": "Name", "description": "What", "why_strong": "Why", "competitive_advantage": "high/medium/low"}],
-  "weaknesses": [{"title": "Gap", "description": "What", "why_weak": "Why", "opportunity": "high/medium/low"}],
-  "risk_to_divi": {"overall_risk": "critical/high/medium/low", "risk_score": 50, "reasoning": "Why", "key_risks": ["risk1"], "mitigation": "What Divi should do"}
+  "strengths": [{"title": "S1", "description": "D1", "why_strong": "W1", "competitive_advantage": "high"}],
+  "weaknesses": [{"title": "W1", "description": "D1", "why_weak": "W1", "opportunity": "high"}],
+  "risk_to_divi": {"overall_risk": "high", "risk_score": 50, "reasoning": "R", "key_risks": ["risk1"], "mitigation": "M"}
 }`,
       }],
     });
 
-    try {
-      const jsonMatch = message.content[0].text.match(/\{[\s\S]*\}/);
-      return JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
-    } catch (error) {
-      return null;
-    }
+    const jsonMatch = message.content[0].text.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+    console.log(`✅ Parsed ${competitor.name}: risk_score=${parsed.risk_to_divi?.risk_score}`);
+    return parsed;
   } catch (error) {
-    console.error(`Error analyzing ${competitor.name}:`, error.message);
+    console.error(`❌ Analysis error for ${competitor.name}:`, error.message);
     return null;
   }
 }
 
-// Store profile
 async function storeCompetitorProfile(competitor, analysis) {
-  if (!analysis) return false;
+  if (!analysis) {
+    console.log(`Skipping ${competitor.name} - no analysis`);
+    return false;
+  }
 
   try {
-    // Store main profile
-    await supabase.from('competitor_profiles').upsert({
+    // 1. Store profile
+    console.log(`Storing profile for ${competitor.name}...`);
+    const { error: profileError } = await supabase.from('competitor_profiles').upsert({
       competitor_id: competitor.id,
       overall_summary: analysis.overall_summary || '',
       target_audience: analysis.target_audience || '',
@@ -94,112 +87,126 @@ async function storeCompetitorProfile(competitor, analysis) {
       analyzed_at: new Date(),
     }, { onConflict: 'competitor_id' });
 
-    // Store strengths
+    if (profileError) {
+      console.error(`Profile error for ${competitor.name}:`, profileError);
+      return false;
+    }
+    console.log(`✅ Profile stored for ${competitor.name}`);
+
+    // 2. Store strengths
     if (analysis.strengths?.length > 0) {
+      console.log(`Storing ${analysis.strengths.length} strengths for ${competitor.name}...`);
       await supabase.from('competitor_strengths').delete().eq('competitor_id', competitor.id);
-      await supabase.from('competitor_strengths').insert(
+      
+      const { error: strengthsError } = await supabase.from('competitor_strengths').insert(
         analysis.strengths.map(s => ({
           competitor_id: competitor.id,
-          strength_title: s.title || '',
+          strength_title: s.title || 'Unknown',
           description: s.description || '',
           why_its_strong: s.why_strong || '',
           competitive_advantage_level: s.competitive_advantage || 'medium',
         }))
       );
+      
+      if (strengthsError) {
+        console.error(`Strengths error for ${competitor.name}:`, strengthsError);
+      } else {
+        console.log(`✅ ${analysis.strengths.length} strengths stored`);
+      }
     }
 
-    // Store weaknesses
+    // 3. Store weaknesses
     if (analysis.weaknesses?.length > 0) {
+      console.log(`Storing ${analysis.weaknesses.length} weaknesses for ${competitor.name}...`);
       await supabase.from('competitor_weaknesses').delete().eq('competitor_id', competitor.id);
-      await supabase.from('competitor_weaknesses').insert(
+      
+      const { error: weaknessesError } = await supabase.from('competitor_weaknesses').insert(
         analysis.weaknesses.map(w => ({
           competitor_id: competitor.id,
-          weakness_title: w.title || '',
+          weakness_title: w.title || 'Unknown',
           description: w.description || '',
           why_its_weak: w.why_weak || '',
           opportunity_level: w.opportunity || 'medium',
           divi_advantage: `Divi advantage in ${w.title}`,
         }))
       );
+      
+      if (weaknessesError) {
+        console.error(`Weaknesses error for ${competitor.name}:`, weaknessesError);
+      } else {
+        console.log(`✅ ${analysis.weaknesses.length} weaknesses stored`);
+      }
     }
 
-    // Store risk assessment
+    // 4. Store risks
     if (analysis.risk_to_divi?.key_risks?.length > 0) {
-      await supabase.from('risk_assessment').insert(
+      console.log(`Storing ${analysis.risk_to_divi.key_risks.length} risks for ${competitor.name}...`);
+      
+      const { error: riskError } = await supabase.from('risk_assessment').insert(
         analysis.risk_to_divi.key_risks.map(risk => ({
           competitor_id: competitor.id,
           risk_category: 'competitive_positioning',
           risk_level: analysis.risk_to_divi.overall_risk || 'medium',
           description: risk || '',
-          potential_impact: 'Threat to Divi',
+          potential_impact: 'Threat to Divi market share',
           mitigation_strategy: analysis.risk_to_divi.mitigation || '',
         }))
       );
+      
+      if (riskError) {
+        console.error(`Risk error for ${competitor.name}:`, riskError);
+      } else {
+        console.log(`✅ ${analysis.risk_to_divi.key_risks.length} risks stored`);
+      }
     }
-
-    // Update competitor
-    await supabase.from('competitors').update({
-      threat_score: analysis.risk_to_divi?.risk_score || 50,
-      tier: analysis.risk_to_divi?.overall_risk || 'medium',
-      last_analyzed: new Date(),
-    }).eq('id', competitor.id);
 
     return true;
   } catch (error) {
-    console.error('Error storing profile:', error.message);
+    console.error(`Store error for ${competitor.name}:`, error.message);
     return false;
   }
 }
 
-// Main handler - FAST VERSION
 export default async function handler(req, res) {
-  try {
-    console.log('🔬 Starting Enhanced Analysis...');
+  console.log('🔬 Starting Enhanced Analysis TEST...');
 
-    const { data: competitors } = await supabase
+  try {
+    const { data: competitors, error: fetchError } = await supabase
       .from('competitors')
       .select('*')
       .eq('status', 'active')
-      .limit(5); // Only analyze 5 at a time to avoid timeout
+      .limit(1); // Just 1 for testing
 
-    let analyzed = 0;
-    let failed = 0;
-
-    // Process in parallel (2 at a time to avoid rate limits)
-    for (let i = 0; i < (competitors?.length || 0); i += 2) {
-      const batch = competitors.slice(i, i + 2);
-      
-      const results = await Promise.allSettled(
-        batch.map(async (comp) => {
-          console.log(`Analyzing ${comp.name}...`);
-          const analysis = await analyzeCompetitorProfile(comp);
-          if (analysis) {
-            const stored = await storeCompetitorProfile(comp, analysis);
-            if (stored) analyzed++;
-            else failed++;
-          } else {
-            failed++;
-          }
-        })
-      );
+    if (fetchError) {
+      console.error('Fetch competitors error:', fetchError);
+      return res.status(500).json({ error: fetchError.message });
     }
 
-    console.log(`✅ Analysis complete: ${analyzed} analyzed, ${failed} failed`);
+    console.log(`Found ${competitors?.length} competitors`);
+
+    let analyzed = 0;
+    for (const competitor of competitors || []) {
+      console.log(`\n--- Analyzing ${competitor.name} (ID: ${competitor.id}) ---`);
+      const analysis = await analyzeCompetitorProfile(competitor);
+      if (analysis) {
+        const stored = await storeCompetitorProfile(competitor, analysis);
+        if (stored) analyzed++;
+      }
+      
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    console.log(`\n✅ Complete: ${analyzed}/${competitors?.length} analyzed`);
     
     res.status(200).json({
       success: true,
-      competitors_analyzed: analyzed,
-      failed_count: failed,
-      message: 'Enhanced analysis completed',
-      timestamp: new Date(),
+      analyzed,
+      total: competitors?.length,
+      message: 'Check Vercel logs for details',
     });
 
   } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(200).json({ 
-      success: false, 
-      error: error.message,
-      note: 'If timeout, run again - it will resume where it left off'
-    });
+    console.error('Top-level error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 }
