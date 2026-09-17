@@ -165,7 +165,6 @@ export default function Dashboard() {
                 <p style={styles.overviewText}>{profile.overall_summary}</p>
               </div>
 
-              {/* Risk Score Breakdown */}
               {riskBreakdown && (
                 <div style={styles.card}>
                   <h2 style={styles.cardTitle}>📊 How We Score Risk (0-100)</h2>
