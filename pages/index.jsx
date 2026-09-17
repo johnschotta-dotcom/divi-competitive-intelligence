@@ -104,6 +104,8 @@ export default function Dashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', website: '' });
   const [section, setSection] = useState('comparison');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [labelFilter, setLabelFilter] = useState('all');
 
   useEffect(() => {
     fetchCompetitors();
@@ -906,6 +908,28 @@ export default function Dashboard() {
             Website + LinkedIn positioning vs DIVI — who overlaps our market, where we win, where we
             fall short, and who is truly chasing the same customers ({competitors.length} companies)
           </p>
+          <div style={styles.filterRow}>
+            <input
+              type="search"
+              placeholder="Search by company name…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={styles.searchInput}
+              aria-label="Search by company name"
+            />
+            <select
+              value={labelFilter}
+              onChange={(e) => setLabelFilter(e.target.value)}
+              style={styles.filterSelect}
+              aria-label="Filter by competitor type"
+            >
+              <option value="all">All types</option>
+              <option value="direct">Direct</option>
+              <option value="adjacent">Adjacent</option>
+              <option value="tangential">Tangential</option>
+              <option value="not_a_competitor">Not a competitor</option>
+            </select>
+          </div>
         </div>
 
         {showAddForm && (
@@ -936,62 +960,104 @@ export default function Dashboard() {
 
         {loading && <p style={styles.loadingText}>Loading…</p>}
 
-        {!loading && (
-          <div style={styles.grid}>
-            {competitors.map((comp) => (
-              <div
-                key={comp.id}
-                onClick={() => fetchDetails(comp)}
-                style={{ ...styles.compCard, borderTopColor: getTierColor(comp.tier) }}
-              >
-                <div style={styles.compCardTop}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-                    <CompanyLogo
-                      name={comp.name}
-                      website={comp.website}
-                      logoUrl={comp.logo_url}
-                      size={40}
-                    />
-                    <h3 style={{ ...styles.compCardTitle, margin: 0 }}>{comp.name}</h3>
-                  </div>
-                  <span style={{ ...styles.compBadge, background: getTierColor(comp.tier) }}>
-                    {isDivi(comp) || comp.tier === 'reference'
-                      ? 'OUR COMPANY'
-                      : (comp.true_competitor_label || comp.tier || 'monitor')
-                          .replace(/_/g, ' ')
-                          .toUpperCase()}
-                  </span>
-                </div>
-                {comp.tagline && <p style={styles.cardTagline}>{comp.tagline}</p>}
-                <div style={styles.scorePair}>
-                  <div style={styles.compCardScore}>
-                    <div style={{ fontSize: '2.2em', fontWeight: 900, color: getTierColor(comp.tier) }}>
-                      {comp.market_overlap_score ?? comp.threat_score ?? '—'}
-                    </div>
-                    <div style={styles.scoreLabel}>Overlap w/ Divi</div>
-                  </div>
-                  <div style={styles.compCardScore}>
+        {!loading && (() => {
+          const q = searchQuery.trim().toLowerCase();
+          const filtered = competitors.filter((comp) => {
+            const label = String(
+              isDivi(comp) || comp.tier === 'reference'
+                ? 'reference'
+                : comp.true_competitor_label || ''
+            ).toLowerCase();
+            if (labelFilter !== 'all' && label !== labelFilter) return false;
+            if (!q) return true;
+            return String(comp.name || '')
+              .toLowerCase()
+              .includes(q);
+          });
+          return (
+            <>
+              {(searchQuery || labelFilter !== 'all') && (
+                <p style={styles.filterMeta}>
+                  Showing {filtered.length} of {competitors.length}
+                  {searchQuery ? ` named “${searchQuery.trim()}”` : ''}
+                  {labelFilter !== 'all'
+                    ? ` · ${labelFilter.replace(/_/g, ' ')}`
+                    : ''}
+                </p>
+              )}
+              {filtered.length === 0 ? (
+                <p style={styles.loadingText}>No companies match these filters.</p>
+              ) : (
+                <div style={styles.grid}>
+                  {filtered.map((comp) => (
                     <div
-                      style={{
-                        fontSize: '1.05em',
-                        fontWeight: 800,
-                        marginTop: 18,
-                        textTransform: 'uppercase',
-                      }}
+                      key={comp.id}
+                      onClick={() => fetchDetails(comp)}
+                      style={{ ...styles.compCard, borderTopColor: getTierColor(comp.tier) }}
                     >
-                      {(comp.true_competitor_label || '—').replace(/_/g, ' ')}
+                      <div style={styles.compCardTop}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            minWidth: 0,
+                            flex: 1,
+                          }}
+                        >
+                          <CompanyLogo
+                            name={comp.name}
+                            website={comp.website}
+                            logoUrl={comp.logo_url}
+                            size={40}
+                          />
+                          <h3 style={{ ...styles.compCardTitle, margin: 0 }}>{comp.name}</h3>
+                        </div>
+                        <span style={{ ...styles.compBadge, background: getTierColor(comp.tier) }}>
+                          {isDivi(comp) || comp.tier === 'reference'
+                            ? 'OUR COMPANY'
+                            : (comp.true_competitor_label || comp.tier || 'monitor')
+                                .replace(/_/g, ' ')
+                                .toUpperCase()}
+                        </span>
+                      </div>
+                      {comp.tagline && <p style={styles.cardTagline}>{comp.tagline}</p>}
+                      <div style={styles.scorePair}>
+                        <div style={styles.compCardScore}>
+                          <div
+                            style={{
+                              fontSize: '2.2em',
+                              fontWeight: 900,
+                              color: getTierColor(comp.tier),
+                            }}
+                          >
+                            {comp.market_overlap_score ?? comp.threat_score ?? '—'}
+                          </div>
+                          <div style={styles.scoreLabel}>Overlap w/ Divi</div>
+                        </div>
+                        <div style={styles.compCardScore}>
+                          <div
+                            style={{
+                              fontSize: '1.05em',
+                              fontWeight: 800,
+                              marginTop: 18,
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {(comp.true_competitor_label || '—').replace(/_/g, ' ')}
+                          </div>
+                          <div style={styles.scoreLabel}>True competitor?</div>
+                        </div>
+                      </div>
+                      <div style={styles.cardMeta}>Grounded in website + LinkedIn claims</div>
+                      <div style={styles.compCardFooter}>View positioning →</div>
                     </div>
-                    <div style={styles.scoreLabel}>True competitor?</div>
-                  </div>
+                  ))}
                 </div>
-                <div style={styles.cardMeta}>
-                  Grounded in website + LinkedIn claims
-                </div>
-                <div style={styles.compCardFooter}>View positioning →</div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+            </>
+          );
+        })()}
       </div>
     </div>
   );
@@ -1082,7 +1148,50 @@ const styles = {
   mainContent: { maxWidth: '1400px', margin: '0 auto', padding: '40px' },
   dashHeader: { marginBottom: 40, textAlign: 'center' },
   dashTitle: { margin: 0, fontSize: '2.4em', fontWeight: 800 },
-  dashSubtitle: { margin: '12px 0 0', fontSize: '1.05em', opacity: 0.7, maxWidth: 720, marginLeft: 'auto', marginRight: 'auto' },
+  dashSubtitle: {
+    margin: '12px 0 0',
+    fontSize: '1.05em',
+    opacity: 0.7,
+    maxWidth: 720,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+  },
+  filterRow: {
+    display: 'flex',
+    gap: 12,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: 22,
+    maxWidth: 720,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+  },
+  searchInput: {
+    flex: '1 1 260px',
+    minWidth: 200,
+    background: '#1a1a1a',
+    border: '1px solid #333',
+    color: '#f5f5f5',
+    borderRadius: 8,
+    padding: '12px 14px',
+    fontSize: '1em',
+  },
+  filterSelect: {
+    flex: '0 1 220px',
+    background: '#1a1a1a',
+    border: '1px solid #333',
+    color: '#f5f5f5',
+    borderRadius: 8,
+    padding: '12px 14px',
+    fontSize: '1em',
+    cursor: 'pointer',
+  },
+  filterMeta: {
+    textAlign: 'center',
+    opacity: 0.65,
+    margin: '0 0 18px',
+    fontSize: '0.95em',
+  },
   formCard: {
     background: '#1a1a1a',
     border: '1px solid #2d2d2d',
