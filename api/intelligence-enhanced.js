@@ -112,3 +112,169 @@ function getDefaultAnalysis(comp) {
   return {
     competitor_id: comp.id,
     website: comp.website,
+    summary: `${comp.name} - Angel investing platform`,
+    funding_risk: 50,
+    team_risk: 50,
+    feature_risk: 50,
+    market_risk: 50,
+    growth_risk: 50,
+    funding_notes: 'Unknown',
+    team_notes: 'Unknown',
+    feature_notes: 'Unknown',
+    market_notes: 'Unknown',
+    growth_notes: 'Unknown',
+    strength1: 'Operates in market',
+    strength2: 'Has website',
+    strength3: 'Active platform',
+    weakness1: 'Limited data',
+    weakness2: 'Unknown positioning',
+    weakness3: 'Unknown advantages'
+  };
+}
+
+function calculateOverallRisk(funding, team, feature, market, growth) {
+  return Math.round((funding * 0.15 + team * 0.25 + feature * 0.35 + market * 0.15 + growth * 0.1) / 1);
+}
+
+async function storeCompetitorData(data, comp) {
+  if (!data) return false;
+
+  try {
+    const overallRisk = calculateOverallRisk(
+      data.funding_risk || 50,
+      data.team_risk || 50,
+      data.feature_risk || 50,
+      data.market_risk || 50,
+      data.growth_risk || 50
+    );
+
+    const threatLevel = overallRisk > 70 ? 'critical' : overallRisk > 50 ? 'high' : 'medium';
+    const logoUrl = await fetchLogo(comp.website);
+
+    // Update competitor
+    await supabase.from('competitors').update({
+      threat_score: overallRisk,
+      tier: threatLevel,
+      logo_url: logoUrl,
+      last_analyzed: new Date(),
+    }).eq('id', comp.id);
+
+    // Delete old data in parallel
+    await Promise.all([
+      supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id),
+      supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id),
+      supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id),
+      supabase.from('risk_score_breakdown').delete().eq('competitor_id', comp.id),
+    ]);
+
+    // Insert profile
+    await supabase.from('competitor_profiles').insert({
+      competitor_id: comp.id,
+      overall_summary: data.summary || 'Analyzed',
+      target_audience: 'Angel Investors',
+      primary_value_prop: data.summary || 'Platform',
+      business_model: 'SaaS',
+      funding_status: 'Unknown',
+      team_size_estimate: 15,
+      risk_score: overallRisk,
+      threat_to_divi: threatLevel,
+      analyzed_at: new Date(),
+    });
+
+    // Insert risk breakdown
+    await supabase.from('risk_score_breakdown').insert({
+      competitor_id: comp.id,
+      funding_risk: data.funding_risk || 50,
+      team_risk: data.team_risk || 50,
+      feature_risk: data.feature_risk || 50,
+      market_fit_risk: data.market_risk || 50,
+      growth_risk: data.growth_risk || 50,
+      funding_notes: data.funding_notes || '',
+      team_notes: data.team_notes || '',
+      feature_notes: data.feature_notes || '',
+      market_notes: data.market_notes || '',
+      growth_notes: data.growth_notes || '',
+      calculated_risk_score: overallRisk,
+    });
+
+    // Insert strengths
+    const strengths = [data.strength1, data.strength2, data.strength3].filter(Boolean);
+    if (strengths.length > 0) {
+      await supabase.from('competitor_strengths').insert(
+        strengths.map(s => ({
+          competitor_id: comp.id,
+          strength_title: s,
+          description: s,
+          why_its_strong: 'Strength',
+          competitive_advantage_level: 'medium',
+        }))
+      );
+    }
+
+    // Insert weaknesses
+    const weaknesses = [data.weakness1, data.weakness2, data.weakness3].filter(Boolean);
+    if (weaknesses.length > 0) {
+      await supabase.from('competitor_weaknesses').insert(
+        weaknesses.map(w => ({
+          competitor_id: comp.id,
+          weakness_title: w,
+          description: w,
+          why_its_weak: 'Gap',
+          opportunity_level: 'medium',
+          divi_advantage: `Divi strength: ${w}`,
+        }))
+      );
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error storing ${comp.id}:`, error.message);
+    return false;
+  }
+}
+
+export default async function handler(req, res) {
+  try {
+    // Get all active competitors
+    const { data: allCompetitors } = await supabase
+      .from('competitors')
+      .select('*')
+      .eq('status', 'active');
+
+    if (!allCompetitors || allCompetitors.length === 0) {
+      return res.status(200).json({ 
+        success: true, 
+        analyzed: 0, 
+        total: 0,
+        message: 'No competitors to analyze'
+      });
+    }
+
+    // PARALLEL: Analyze all competitors simultaneously
+    const analysisResults = await Promise.all(
+      allCompetitors.map(comp => analyzeCompetitor(comp))
+    );
+
+    // PARALLEL: Store all results simultaneously
+    const storeResults = await Promise.all(
+      allCompetitors.map((comp, idx) => storeCompetitorData(analysisResults[idx], comp))
+    );
+
+    const analyzed = storeResults.filter(Boolean).length;
+
+    res.status(200).json({ 
+      success: true, 
+      analyzed,
+      total: allCompetitors.length,
+      timestamp: new Date().toISOString(),
+      message: `Analyzed ${analyzed}/${allCompetitors.length} competitors`
+    });
+  } catch (error) {
+    console.error('Agent error:', error);
+    res.status(200).json({ 
+      success: false, 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
