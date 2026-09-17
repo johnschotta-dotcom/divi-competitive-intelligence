@@ -51,10 +51,10 @@ npm run dev
 
 For each competitor the agent:
 
-1. Scrapes **Divi’s** website (+ LinkedIn if linked) as the live gold-standard corpus
-2. Scrapes the **competitor’s** website pages + LinkedIn URL found on-site
-3. Asks Claude to compare **only those surfaces** — no invented funding/press
-4. Outputs: market overlap score, true-competitor label (`direct|adjacent|tangential|not_a_competitor`), where Divi wins / falls short / looks the same / they differentiate, plus a capability matrix from website claims
+1. Crawls **Divi’s** website from the homepage (follows About / Product / Blog / Updates links on-site) + LinkedIn if linked
+2. Crawls each **competitor** the same way — discovers internal nav links, prioritizes about/product/pricing/blog/news/updates, and pulls a few latest blog posts
+3. Asks Claude to compare **only those page corpora**
+4. Outputs market overlap, true-competitor label, wins / gaps / sameness / differentiation
 
 Also run [`supabase/03_positioning.sql`](supabase/03_positioning.sql) once for new overlap columns.
 
