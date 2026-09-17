@@ -1,5 +1,5 @@
 /**
- * SIMPLER VERSION - Ask Claude for minimal JSON
+ * FULL VERSION - With strengths and weaknesses
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -19,12 +19,13 @@ async function analyzeCompetitor(comp) {
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 300,
+      max_tokens: 600,
       messages: [{
         role: 'user',
         content: `${comp.name}: ${content}
 
-ONE LINE JSON ONLY: {"summary":"one sentence","risk":50}`,
+Return ONLY this JSON format:
+{"summary":"one sentence","risk":50,"strengths":["strength 1","strength 2"],"weaknesses":["weakness 1","weakness 2"]}`,
       }],
     });
 
@@ -38,8 +39,8 @@ ONE LINE JSON ONLY: {"summary":"one sentence","risk":50}`,
     
     if (!text) return null;
 
-    // Super aggressive extraction
-    text = text.replace(/`/g, '').trim();
+    // Remove all backticks and markdown
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}') + 1;
     
@@ -72,7 +73,12 @@ export default async function handler(req, res) {
       const data = await analyzeCompetitor(comp);
       if (!data) continue;
 
+      // Delete old data
       await supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id);
+      await supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id);
+      await supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id);
+
+      // Insert profile
       await supabase.from('competitor_profiles').insert({
         competitor_id: comp.id,
         overall_summary: data.summary || 'Competitor analyzed',
@@ -83,6 +89,33 @@ export default async function handler(req, res) {
         threat_to_divi: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : 'medium',
         analyzed_at: new Date(),
       });
+
+      // Insert strengths
+      if (data.strengths && Array.isArray(data.strengths) && data.strengths.length > 0) {
+        await supabase.from('competitor_strengths').insert(
+          data.strengths.map(s => ({
+            competitor_id: comp.id,
+            strength_title: s,
+            description: s,
+            why_its_strong: 'Competitive advantage',
+            competitive_advantage_level: 'medium',
+          }))
+        );
+      }
+
+      // Insert weaknesses
+      if (data.weaknesses && Array.isArray(data.weaknesses) && data.weaknesses.length > 0) {
+        await supabase.from('competitor_weaknesses').insert(
+          data.weaknesses.map(w => ({
+            competitor_id: comp.id,
+            weakness_title: w,
+            description: w,
+            why_its_weak: 'Gap in offering',
+            opportunity_level: 'medium',
+            divi_advantage: `Divi can win on ${w}`,
+          }))
+        );
+      }
 
       analyzed++;
     }
