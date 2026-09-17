@@ -1,5 +1,5 @@
 /**
- * ANALYZE ALL COMPETITORS - No skipping
+ * UPDATED AGENT - Updates threat scores in competitors table
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -74,7 +74,6 @@ Return JSON:
 
 export default async function handler(req, res) {
   try {
-    // Get ALL competitors (not just 4)
     const { data: allCompetitors } = await supabase
       .from('competitors')
       .select('*')
@@ -86,18 +85,27 @@ export default async function handler(req, res) {
 
     let analyzed = 0;
 
-    // Process ALL
     for (const comp of allCompetitors) {
       const data = await analyzeCompetitor(comp);
       if (!data) continue;
 
-      // Delete old
+      const riskScore = Math.min(100, Math.max(0, data.risk || 50));
+      const threatLevel = riskScore > 70 ? 'critical' : riskScore > 50 ? 'high' : riskScore > 30 ? 'medium' : 'low';
+
+      // UPDATE competitors table with threat score
+      await supabase.from('competitors').update({
+        threat_score: riskScore,
+        tier: threatLevel,
+        last_analyzed: new Date(),
+      }).eq('id', comp.id);
+
+      // Delete old profiles
       await supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id);
       await supabase.from('risk_assessment').delete().eq('competitor_id', comp.id);
 
-      // Profile
+      // Store profile
       await supabase.from('competitor_profiles').insert({
         competitor_id: comp.id,
         overall_summary: data.summary || 'Analyzed',
@@ -106,12 +114,12 @@ export default async function handler(req, res) {
         business_model: 'SaaS',
         funding_status: data.funding || 'Unknown',
         team_size_estimate: data.team || 15,
-        risk_score: Math.min(100, Math.max(0, data.risk || 50)),
-        threat_to_divi: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : 'medium',
+        risk_score: riskScore,
+        threat_to_divi: threatLevel,
         analyzed_at: new Date(),
       });
 
-      // Strengths
+      // Store strengths
       const strengths = [data.strength1, data.strength2, data.strength3].filter(Boolean);
       if (strengths.length > 0) {
         await supabase.from('competitor_strengths').insert(
@@ -125,7 +133,7 @@ export default async function handler(req, res) {
         );
       }
 
-      // Weaknesses
+      // Store weaknesses
       const weaknesses = [data.weakness1, data.weakness2, data.weakness3].filter(Boolean);
       if (weaknesses.length > 0) {
         await supabase.from('competitor_weaknesses').insert(
@@ -140,14 +148,14 @@ export default async function handler(req, res) {
         );
       }
 
-      // Risks
+      // Store risks
       const risks = [data.risk1, data.risk2, data.risk3].filter(Boolean);
       if (risks.length > 0) {
         await supabase.from('risk_assessment').insert(
           risks.map(r => ({
             competitor_id: comp.id,
             risk_category: r.includes('fund') ? 'funding' : r.includes('product') ? 'product' : 'market',
-            risk_level: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : 'medium',
+            risk_level: threatLevel,
             description: r,
             potential_impact: 'Competitive threat',
             mitigation_strategy: 'Monitor and respond',
