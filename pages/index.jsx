@@ -191,16 +191,21 @@ export default function Dashboard() {
   );
 
   const SectionNav = () => {
+    const hasFunding = fundingRounds.length > 0 ||
+      (selected.revenue_estimate && !/not stated/i.test(selected.revenue_estimate));
+    const hasHistory = history.length > 0;
+    const hasTone = sentiment?.summary && !/pending|insufficient|reference messaging/i.test(sentiment.summary);
+    const hasPress = media.some((m) => m.source_name && !['crawled_page', 'website_heading'].includes(m.source_name));
     const tabs = [
       { id: 'comparison', label: 'Positioning vs Divi' },
-      { id: 'overview', label: 'What their site says' },
-      { id: 'founders', label: 'Team (from site)' },
-      { id: 'tech', label: 'Tech signals' },
-      { id: 'history', label: 'History (on site)' },
-      { id: 'funding', label: 'Only if on site' },
-      { id: 'sentiment', label: 'Site tone' },
-      { id: 'press', label: 'Press' },
-    ];
+      { id: 'overview', label: 'Website snapshot' },
+      founders.length ? { id: 'founders', label: `Team (${founders.length})` } : null,
+      techStack.length ? { id: 'tech', label: 'Tech signals' } : null,
+      hasHistory ? { id: 'history', label: 'History' } : null,
+      hasFunding ? { id: 'funding', label: 'On-site commercial' } : null,
+      hasTone ? { id: 'sentiment', label: 'Site tone' } : null,
+      hasPress ? { id: 'press', label: 'Press' } : null,
+    ].filter(Boolean);
     return (
       <div style={styles.sectionNav}>
         {tabs.map((t) => (
@@ -330,89 +335,107 @@ export default function Dashboard() {
             <>
               <div style={styles.kpiGrid}>
                 <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>Revenue (est.)</div>
-                  <div style={styles.kpiValue}>
-                    {selected.revenue_estimate || profile?.revenue_estimate || '—'}
-                  </div>
+                  <div style={styles.kpiLabel}>What they lead with</div>
+                  <div style={styles.kpiValueSmall}>{selected.tagline || profile?.primary_value_prop || '—'}</div>
                 </div>
                 <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>Total funding (est.)</div>
-                  <div style={styles.kpiValue}>{selected.total_funding_display || '—'}</div>
-                </div>
-                <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>Business model</div>
-                  <div style={styles.kpiValueSmall}>{profile?.business_model || '—'}</div>
-                </div>
-                <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>Target audience</div>
+                  <div style={styles.kpiLabel}>Audience (from site)</div>
                   <div style={styles.kpiValueSmall}>{profile?.target_audience || '—'}</div>
                 </div>
+                <div style={styles.kpiCard}>
+                  <div style={styles.kpiLabel}>Team on site</div>
+                  <div style={styles.kpiValue}>{founders.length || '—'}</div>
+                </div>
+                <div style={styles.kpiCard}>
+                  <div style={styles.kpiLabel}>Pages crawled</div>
+                  <div style={styles.kpiValue}>
+                    {media.filter((m) => m.source_name === 'crawled_page').length || '—'}
+                  </div>
+                </div>
               </div>
 
-              {profile && (
-                <div style={styles.card}>
-                  <h2 style={styles.cardTitle}>Company overview</h2>
-                  <p style={styles.overviewText}>{profile.overall_summary}</p>
-                  {profile.primary_value_prop && (
-                    <p style={styles.valueProp}>
-                      <strong>Value prop:</strong> {profile.primary_value_prop}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {riskBreakdown && (
-                <div style={styles.card}>
-                  <h2 style={styles.cardTitle}>Risk breakdown (0–100)</h2>
-                  <p style={styles.scoreExplainer}>
-                    Team 25% · Features 35% · Funding 15% · Market fit 15% · Growth 10%
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>Website snapshot</h2>
+                <p style={styles.overviewText}>
+                  {profile?.overall_summary || 'Re-analyze to populate from their live website.'}
+                </p>
+                {profile?.primary_value_prop && (
+                  <p style={styles.valueProp}>
+                    <strong>Value prop / meta:</strong> {profile.primary_value_prop}
                   </p>
-                  <RiskBar label="Team & execution" value={riskBreakdown.team_risk} notes={riskBreakdown.team_notes} />
-                  <RiskBar label="Product features" value={riskBreakdown.feature_risk} notes={riskBreakdown.feature_notes} />
-                  <RiskBar label="Funding status" value={riskBreakdown.funding_risk} notes={riskBreakdown.funding_notes} />
-                  <RiskBar label="Market fit" value={riskBreakdown.market_fit_risk} notes={riskBreakdown.market_notes} />
-                  <RiskBar label="Growth momentum" value={riskBreakdown.growth_risk} notes={riskBreakdown.growth_notes} />
+                )}
+              </div>
+
+              {media.filter((m) => m.source_name === 'crawled_page').length > 0 && (
+                <div style={styles.card}>
+                  <h2 style={styles.cardTitle}>Pages we read</h2>
+                  <div style={styles.itemList}>
+                    {media
+                      .filter((m) => m.source_name === 'crawled_page')
+                      .map((m) => (
+                        <div key={m.id || m.title} style={styles.listItem}>
+                          <div>
+                            <a href={m.url || m.title} target="_blank" rel="noreferrer" style={styles.profileLink}>
+                              {m.title}
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
 
-              <div style={styles.twoColumnGrid}>
+              {media.filter((m) => m.source_name === 'website_heading').length > 0 && (
                 <div style={styles.card}>
-                  <h2 style={styles.cardTitle}>Strengths</h2>
-                  {strengths.length === 0 ? (
-                    <p style={styles.emptyState}>No data yet — run Re-analyze</p>
-                  ) : (
-                    <div style={styles.itemList}>
-                      {strengths.map((s) => (
-                        <div key={s.id} style={styles.listItem}>
-                          <div style={styles.listItemIcon}>+</div>
-                          <div>
-                            <div style={styles.listItemTitle}>{s.strength_title}</div>
-                            <div style={styles.listItemDesc}>{s.why_its_strong}</div>
-                          </div>
-                        </div>
+                  <h2 style={styles.cardTitle}>Headlines / sections on site</h2>
+                  <ul style={styles.winList}>
+                    {media
+                      .filter((m) => m.source_name === 'website_heading')
+                      .map((m) => (
+                        <li key={m.id || m.title}>{m.title}</li>
                       ))}
-                    </div>
-                  )}
+                  </ul>
                 </div>
-                <div style={styles.card}>
-                  <h2 style={styles.cardTitle}>Divi opportunities</h2>
-                  {weaknesses.length === 0 ? (
-                    <p style={styles.emptyState}>No data yet — run Re-analyze</p>
-                  ) : (
-                    <div style={styles.itemList}>
-                      {weaknesses.map((w) => (
-                        <div key={w.id} style={{ ...styles.listItem, borderLeft: '3px solid #e74c3c' }}>
-                          <div style={{ ...styles.listItemIcon, color: '#e74c3c' }}>→</div>
-                          <div>
-                            <div style={styles.listItemTitle}>{w.weakness_title}</div>
-                            <div style={styles.listItemDesc}>{w.divi_advantage}</div>
+              )}
+
+              {(strengths.length > 0 || weaknesses.length > 0) && (
+                <div style={styles.twoColumnGrid}>
+                  <div style={styles.card}>
+                    <h2 style={styles.cardTitle}>What their site sells well</h2>
+                    {strengths.length === 0 ? (
+                      <p style={styles.emptyState}>—</p>
+                    ) : (
+                      <div style={styles.itemList}>
+                        {strengths.map((s) => (
+                          <div key={s.id} style={styles.listItem}>
+                            <div>
+                              <div style={styles.listItemTitle}>{s.strength_title}</div>
+                              <div style={styles.listItemDesc}>{s.why_its_strong}</div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={styles.card}>
+                    <h2 style={styles.cardTitle}>Gaps vs Divi’s site claims</h2>
+                    {weaknesses.length === 0 ? (
+                      <p style={styles.emptyState}>—</p>
+                    ) : (
+                      <div style={styles.itemList}>
+                        {weaknesses.map((w) => (
+                          <div key={w.id} style={{ ...styles.listItem, borderLeft: '3px solid #e74c3c' }}>
+                            <div>
+                              <div style={styles.listItemTitle}>{w.weakness_title}</div>
+                              <div style={styles.listItemDesc}>{w.divi_advantage}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
