@@ -901,10 +901,10 @@ export default function Dashboard() {
 
       <div style={styles.mainContent}>
         <div style={styles.dashHeader}>
-          <h1 style={styles.dashTitle}>Competitive landscape</h1>
+          <h1 style={styles.dashTitle}>Competitive Landscape</h1>
           <p style={styles.dashSubtitle}>
-            Website + LinkedIn positioning vs Divi — who overlaps our market, where we win, where we
-            fall short, and who is truly chasing the same jobs ({competitors.length} companies)
+            Website + LinkedIn positioning vs DIVI — who overlaps our market, where we win, where we
+            fall short, and who is truly chasing the same customers ({competitors.length} companies)
           </p>
         </div>
 
