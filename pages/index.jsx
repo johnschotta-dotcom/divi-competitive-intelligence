@@ -194,7 +194,7 @@ export default function Dashboard() {
     const tabs = [
       { id: 'comparison', label: 'Positioning vs Divi' },
       { id: 'overview', label: 'What their site says' },
-      { id: 'founders', label: 'People (on site)' },
+      { id: 'founders', label: 'Team (from site)' },
       { id: 'tech', label: 'Tech signals' },
       { id: 'history', label: 'History (on site)' },
       { id: 'funding', label: 'Only if on site' },
@@ -539,9 +539,11 @@ export default function Dashboard() {
 
           {!detailLoading && section === 'founders' && (
             <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Founders & leadership</h2>
+              <h2 style={styles.cardTitle}>Team listed on website</h2>
               {founders.length === 0 ? (
-                <p style={styles.emptyState}>No founder data yet</p>
+                <p style={styles.emptyState}>
+                  No team members extracted yet — re-analyze after deploy (team pages like /team are now crawled with full roster extraction).
+                </p>
               ) : (
                 <div style={styles.founderGrid}>
                   {founders.map((f) => (
