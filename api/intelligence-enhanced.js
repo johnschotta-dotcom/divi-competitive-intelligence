@@ -1,5 +1,5 @@
 /**
- * WORKING VERSION - Simple insert approach
+ * IMPROVED VERSION - Skips already analyzed competitors
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -10,7 +10,6 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 async function analyzeCompetitor(comp) {
   try {
-    // Fetch webpage
     const response = await fetch(comp.website, { 
       headers: { 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(5000)
@@ -18,7 +17,6 @@ async function analyzeCompetitor(comp) {
     const html = await response.text();
     const content = html.substring(0, 1000);
 
-    // Call Claude
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
       max_tokens: 500,
@@ -28,7 +26,6 @@ async function analyzeCompetitor(comp) {
       }],
     });
 
-    // Extract text (skip thinking blocks)
     let text = null;
     for (const block of message.content) {
       if (block.type === 'text') {
@@ -38,36 +35,42 @@ async function analyzeCompetitor(comp) {
     }
     
     if (!text) return null;
-
-    // Parse JSON
     const jsonMatch = text.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
     if (!jsonMatch) return null;
     
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    console.error(`Error analyzing ${comp.name}: ${error.message}`);
     return null;
   }
 }
 
 export default async function handler(req, res) {
   try {
-    const { data: competitors } = await supabase
+    // Get competitors WITHOUT existing profiles
+    const { data: allCompetitors } = await supabase
       .from('competitors')
       .select('*')
-      .eq('status', 'active')
-      .limit(3); // Process 3 at a time
+      .eq('status', 'active');
+
+    const { data: analyzedIds } = await supabase
+      .from('competitor_profiles')
+      .select('competitor_id');
+
+    const analyzedSet = new Set(analyzedIds?.map(a => a.competitor_id) || []);
+    const toAnalyze = allCompetitors?.filter(c => !analyzedSet.has(c.id)).slice(0, 3) || [];
+
+    console.log(`Total competitors: ${allCompetitors?.length}, Already analyzed: ${analyzedIds?.length}, To analyze: ${toAnalyze.length}`);
 
     let analyzed = 0;
 
-    for (const comp of competitors || []) {
+    for (const comp of toAnalyze) {
       const data = await analyzeCompetitor(comp);
       if (!data) continue;
 
-      // Delete existing profile
+      // Delete existing
       await supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id);
       
-      // Insert new profile
+      // Insert new
       await supabase.from('competitor_profiles').insert({
         competitor_id: comp.id,
         overall_summary: data.summary || 'N/A',
@@ -79,7 +82,7 @@ export default async function handler(req, res) {
         analyzed_at: new Date(),
       });
 
-      // Store strengths
+      // Strengths
       if (data.strengths && data.strengths.length > 0) {
         await supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id);
         await supabase.from('competitor_strengths').insert(
@@ -93,7 +96,7 @@ export default async function handler(req, res) {
         );
       }
 
-      // Store weaknesses
+      // Weaknesses
       if (data.weaknesses && data.weaknesses.length > 0) {
         await supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id);
         await supabase.from('competitor_weaknesses').insert(
@@ -111,7 +114,13 @@ export default async function handler(req, res) {
       analyzed++;
     }
 
-    res.status(200).json({ success: true, analyzed, total: competitors?.length });
+    res.status(200).json({ 
+      success: true, 
+      analyzed, 
+      total_competitors: allCompetitors?.length,
+      already_analyzed: analyzedIds?.length,
+      remaining: toAnalyze.length
+    });
   } catch (error) {
     res.status(200).json({ success: false, error: error.message });
   }
