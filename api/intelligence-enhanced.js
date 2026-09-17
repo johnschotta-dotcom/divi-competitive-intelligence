@@ -1,7 +1,20 @@
-/**
- * Alias of the deep intelligence agent.
- * Prefer /api/intelligence (cron target in vercel.json).
- */
-import runIntelligence from '../lib/agentRunner.js';
+import runIntelligence from '../lib/agentRunner';
 
-export default runIntelligence;
+export const config = {
+  maxDuration: 300,
+};
+
+export default async function handler(req, res) {
+  try {
+    return await runIntelligence(req, res);
+  } catch (error) {
+    console.error('intelligence-enhanced crash:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Intelligence agent failed',
+      });
+    }
+  }
+}
+

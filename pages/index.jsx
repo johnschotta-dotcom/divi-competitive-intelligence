@@ -121,14 +121,29 @@ export default function Dashboard() {
     try {
       const url = competitorId ? `/api/intelligence?id=${competitorId}` : '/api/intelligence';
       const res = await fetch(url);
-      const json = await res.json();
+      const raw = await res.text();
+      let json;
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        const snippet = (raw || '').slice(0, 240).replace(/\s+/g, ' ');
+        throw new Error(
+          res.status === 504 || /timed out|timeout|An error occurred/i.test(raw)
+            ? `Analysis timed out or crashed on the server (HTTP ${res.status}). Re-analyze one competitor at a time, and ensure Vercel function duration is high enough. Details: ${snippet || 'empty response'}`
+            : `Server returned non-JSON (HTTP ${res.status}): ${snippet || 'empty response'}`
+        );
+      }
       if (!res.ok || json.success === false) {
-        alert(json.error || 'Analysis failed');
+        alert(json.error || json.message || 'Analysis failed');
       } else {
-        alert(`Analyzed ${json.analyzed}/${json.total} competitors`);
+        alert(
+          `Analyzed ${json.analyzed}/${json.total} competitors` +
+            (json.failures?.length ? `\nFailures: ${json.failures.join('; ')}` : '')
+        );
         await fetchCompetitors();
         if (selected) {
-          const refreshed = (await supabase.from('competitors').select('*').eq('id', selected.id).single()).data;
+          const refreshed = (await supabase.from('competitors').select('*').eq('id', selected.id).single())
+            .data;
           if (refreshed) await fetchDetails(refreshed);
         }
       }
@@ -722,7 +737,20 @@ export default function Dashboard() {
             <span>Divi Intelligence</span>
           </div>
           <div style={styles.navActions}>
-            <button onClick={() => runAnalysis()} style={styles.ghostBtn} disabled={analyzing}>
+            <button
+              onClick={() => {
+                if (
+                  !confirm(
+                    'Full analysis can take several minutes and may time out on Vercel. Prefer opening one competitor and clicking Re-analyze. Continue with full run?'
+                  )
+                ) {
+                  return;
+                }
+                runAnalysis();
+              }}
+              style={styles.ghostBtn}
+              disabled={analyzing}
+            >
               {analyzing ? 'Analyzing…' : 'Run full analysis'}
             </button>
             <button onClick={() => setShowAddForm(true)} style={styles.addBtn}>

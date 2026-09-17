@@ -1,6 +1,13 @@
 {
-  "crons": [{
-    "path": "/api/intelligence",
-    "schedule": "0 9 * * *"
-  }]
+  "crons": [
+    {
+      "path": "/api/intelligence",
+      "schedule": "0 9 * * *"
+    }
+  ],
+  "functions": {
+    "pages/api/intelligence.js": {
+      "maxDuration": 300
+    }
+  }
 }
