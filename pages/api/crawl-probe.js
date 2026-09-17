@@ -18,10 +18,17 @@ export default async function handler(req, res) {
 
   try {
     const started = Date.now();
-    const html = await fetchWebpage(url, { maxChars: 28000, timeoutMs: 18000 });
+    const html = await fetchWebpage(url, {
+      maxChars: 28000,
+      timeoutMs: 18000,
+      allowFallbacks: true,
+    });
     const text = html ? htmlToText(html, 8000) : '';
     const signalMatch = html?.match(/<!--SIGNALS\n([\s\S]*?)\n-->/);
-    const bundle = await fetchPresenceBundle(url);
+    const light = String(req.query.light || '') === '1';
+    const bundle = light
+      ? null
+      : await fetchPresenceBundle(url);
     return res.status(200).json({
       ok: true,
       url,
@@ -30,13 +37,15 @@ export default async function handler(req, res) {
       text_chars: text.length,
       signals: signalMatch?.[1] || null,
       text_sample: text.slice(0, 500),
-      bundle: {
-        pages_fetched: bundle.pagesFetched || [],
-        crawl_text_chars: bundle.crawl_text_chars,
-        crawl_thin: bundle.crawl_thin,
-        facts: bundle.websiteFacts?.factsBlock || null,
-        presence_sample: String(bundle.presenceText || '').slice(0, 800),
-      },
+      bundle: bundle
+        ? {
+            pages_fetched: bundle.pagesFetched || [],
+            crawl_text_chars: bundle.crawl_text_chars,
+            crawl_thin: bundle.crawl_thin,
+            facts: bundle.websiteFacts?.factsBlock || null,
+            presence_sample: String(bundle.presenceText || '').slice(0, 800),
+          }
+        : null,
     });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
