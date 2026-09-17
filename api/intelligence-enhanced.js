@@ -1,5 +1,5 @@
 /**
- * ENHANCED AGENT - Includes LinkedIn company data
+ * NEXT LEVEL AGENT - Risk breakdown + Logos + DIVI comparison
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -23,7 +23,6 @@ async function fetchWebpage(url) {
 
 async function fetchLinkedIn(companyName) {
   try {
-    // Try to fetch LinkedIn company page
     const linkedinUrl = `https://www.linkedin.com/company/${companyName.toLowerCase().replace(/\s+/g, '-')}`;
     const response = await fetch(linkedinUrl, { 
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -36,16 +35,31 @@ async function fetchLinkedIn(companyName) {
   }
 }
 
+async function fetchLogo(companyName, website) {
+  try {
+    // Try common logo CDN
+    const domain = new URL(website).hostname.replace('www.', '');
+    const logoUrls = [
+      `https://logo.clearbit.com/${domain}`,
+      `https://www.google.com/s2/favicons?domain=${domain}&sz=256`,
+    ];
+    return logoUrls[0]; // Return Clearbit URL (most reliable)
+  } catch (error) {
+    return null;
+  }
+}
+
 async function analyzeCompetitor(comp) {
   try {
     const websiteContent = await fetchWebpage(comp.website);
     const linkedinContent = await fetchLinkedIn(comp.name);
+    const logoUrl = await fetchLogo(comp.name, comp.website);
     
     if (!websiteContent && !linkedinContent) return null;
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 1200,
+      max_tokens: 1500,
       messages: [{
         role: 'user',
         content: `Analyze ${comp.name}:
@@ -56,23 +70,32 @@ ${websiteContent || 'Not available'}
 LINKEDIN:
 ${linkedinContent || 'Not available'}
 
-Return JSON:
+Return JSON with DETAILED risk breakdown (each 0-100):
 {
   "summary": "one sentence",
-  "risk": 50,
-  "funding": "Series A or unknown",
-  "team": 15,
-  "linkedin_employees": "estimate from LinkedIn or null",
-  "linkedin_stage": "Series A, Funded, Startup, etc or null",
-  "strength1": "first",
-  "strength2": "second", 
-  "strength3": "third",
-  "weakness1": "first",
-  "weakness2": "second",
-  "weakness3": "third",
-  "risk1": "one",
-  "risk2": "two",
-  "risk3": "three"
+  
+  "funding_risk": 50,
+  "funding_notes": "Why this risk level (seed/unfunded/series A etc)",
+  
+  "team_risk": 50,
+  "team_notes": "Team size, experience, credibility risk",
+  
+  "feature_risk": 50,
+  "feature_notes": "How complete are their features vs market needs",
+  
+  "market_fit_risk": 50,
+  "market_notes": "How well positioned in market",
+  
+  "growth_risk": 50,
+  "growth_notes": "Growth trajectory and momentum",
+  
+  "strength1": "strength",
+  "strength2": "strength", 
+  "strength3": "strength",
+  
+  "weakness1": "weakness",
+  "weakness2": "weakness",
+  "weakness3": "weakness"
 }`,
       }],
     });
@@ -91,10 +114,19 @@ Return JSON:
     const end = text.lastIndexOf('}') + 1;
     if (start === -1 || end === 0) return null;
     
-    return JSON.parse(text.substring(start, end));
+    const data = JSON.parse(text.substring(start, end));
+    data.logo_url = logoUrl;
+    return data;
   } catch (error) {
     return null;
   }
+}
+
+function calculateOverallRisk(funding, team, feature, market, growth) {
+  // Weighted average: team and features most important
+  return Math.round(
+    (funding * 0.15 + team * 0.25 + feature * 0.35 + market * 0.15 + growth * 0.1) / 1
+  );
 }
 
 export default async function handler(req, res) {
@@ -114,13 +146,22 @@ export default async function handler(req, res) {
       const data = await analyzeCompetitor(comp);
       if (!data) continue;
 
-      const riskScore = Math.min(100, Math.max(0, data.risk || 50));
-      const threatLevel = riskScore > 70 ? 'critical' : riskScore > 50 ? 'high' : riskScore > 30 ? 'medium' : 'low';
+      // Calculate overall risk
+      const overallRisk = calculateOverallRisk(
+        data.funding_risk,
+        data.team_risk,
+        data.feature_risk,
+        data.market_fit_risk,
+        data.growth_risk
+      );
+
+      const threatLevel = overallRisk > 70 ? 'critical' : overallRisk > 50 ? 'high' : overallRisk > 30 ? 'medium' : 'low';
 
       // Update competitors table
       await supabase.from('competitors').update({
-        threat_score: riskScore,
+        threat_score: overallRisk,
         tier: threatLevel,
+        logo_url: data.logo_url,
         last_analyzed: new Date(),
       }).eq('id', comp.id);
 
@@ -129,19 +170,36 @@ export default async function handler(req, res) {
       await supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id);
       await supabase.from('risk_assessment').delete().eq('competitor_id', comp.id);
+      await supabase.from('risk_score_breakdown').delete().eq('competitor_id', comp.id);
 
-      // Store profile with LinkedIn data
+      // Store profile
       await supabase.from('competitor_profiles').insert({
         competitor_id: comp.id,
         overall_summary: data.summary || 'Analyzed',
         target_audience: 'Angel Investors',
         primary_value_prop: data.summary || 'Platform',
         business_model: 'SaaS',
-        funding_status: data.funding || (data.linkedin_stage || 'Unknown'),
-        team_size_estimate: data.team || (data.linkedin_employees ? parseInt(data.linkedin_employees) : 15),
-        risk_score: riskScore,
+        funding_status: 'Unknown',
+        team_size_estimate: 15,
+        risk_score: overallRisk,
         threat_to_divi: threatLevel,
         analyzed_at: new Date(),
+      });
+
+      // Store risk breakdown
+      await supabase.from('risk_score_breakdown').insert({
+        competitor_id: comp.id,
+        funding_risk: data.funding_risk,
+        team_risk: data.team_risk,
+        feature_risk: data.feature_risk,
+        market_fit_risk: data.market_fit_risk,
+        growth_risk: data.growth_risk,
+        funding_notes: data.funding_notes,
+        team_notes: data.team_notes,
+        feature_notes: data.feature_notes,
+        market_notes: data.market_notes,
+        growth_notes: data.growth_notes,
+        calculated_risk_score: overallRisk,
       });
 
       // Strengths
@@ -172,30 +230,6 @@ export default async function handler(req, res) {
           }))
         );
       }
-
-      // Risks
-      const risks = [data.risk1, data.risk2, data.risk3].filter(Boolean);
-      if (risks.length > 0) {
-        await supabase.from('risk_assessment').insert(
-          risks.map(r => ({
-            competitor_id: comp.id,
-            risk_category: r.includes('fund') ? 'funding' : r.includes('product') ? 'product' : 'market',
-            risk_level: threatLevel,
-            description: r,
-            potential_impact: 'Competitive threat',
-            mitigation_strategy: 'Monitor and respond',
-          }))
-        );
-      }
-
-      // Add LinkedIn research link
-      await supabase.from('research_links').insert({
-        competitor_id: comp.id,
-        link_type: 'linkedin',
-        url: `https://www.linkedin.com/company/${comp.name.toLowerCase().replace(/\s+/g, '-')}`,
-        title: `${comp.name} on LinkedIn`,
-        description: 'LinkedIn company page',
-      });
 
       analyzed++;
     }
