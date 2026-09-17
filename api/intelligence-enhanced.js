@@ -1,5 +1,5 @@
 /**
- * ULTRA DEBUG VERSION - Shows every step
+ * FIXED - Handles Claude response correctly
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -50,13 +50,27 @@ export default async function handler(req, res) {
         role: 'user',
         content: `${comp.name}: ${content}
 
-Return: {"risk":50}`,
+Return only JSON: {"risk":50}`,
       }],
     });
 
     logs.push(`Claude response received`);
-    const text = message.content[0].text;
-    logs.push(`Response: "${text.substring(0, 200)}"`);
+    logs.push(`Response structure: type=${typeof message.content}, length=${message.content?.length}`);
+    logs.push(`First item type: ${message.content[0]?.type}`);
+    
+    // Fix: Extract text correctly
+    let text;
+    if (message.content[0]?.type === 'text') {
+      text = message.content[0].text;
+    } else {
+      throw new Error(`Unexpected content type: ${message.content[0]?.type}`);
+    }
+    
+    logs.push(`Response text: "${text?.substring(0, 200) || 'NULL'}"`);
+
+    if (!text) {
+      throw new Error('No text in response');
+    }
 
     // STEP 4: Parse JSON
     logs.push('STEP 4: Parsing JSON...');
@@ -73,8 +87,8 @@ Return: {"risk":50}`,
     logs.push('STEP 5: Storing...');
     const { error } = await supabase.from('competitor_profiles').upsert({
       competitor_id: comp.id,
-      overall_summary: 'test',
-      target_audience: 'test',
+      overall_summary: 'Analyzed',
+      target_audience: 'Investors',
       risk_score: data.risk || 50,
       threat_to_divi: 'medium',
       analyzed_at: new Date(),
@@ -90,7 +104,6 @@ Return: {"risk":50}`,
 
   } catch (error) {
     logs.push(`EXCEPTION: ${error.message}`);
-    logs.push(error.stack);
     res.status(200).json({ success: false, logs, error: error.message });
   }
 }
