@@ -1,5 +1,5 @@
 /**
- * UPDATED AGENT - Updates threat scores in competitors table
+ * ENHANCED AGENT - Includes LinkedIn company data
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -11,11 +11,26 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 async function fetchWebpage(url) {
   try {
     const response = await fetch(url, { 
-      headers: { 'User-Agent': 'Mozilla/5.0' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
       signal: AbortSignal.timeout(5000)
     });
     const html = await response.text();
-    return html.substring(0, 1500);
+    return html.substring(0, 2000);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function fetchLinkedIn(companyName) {
+  try {
+    // Try to fetch LinkedIn company page
+    const linkedinUrl = `https://www.linkedin.com/company/${companyName.toLowerCase().replace(/\s+/g, '-')}`;
+    const response = await fetch(linkedinUrl, { 
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(5000)
+    });
+    const html = await response.text();
+    return html.substring(0, 2000);
   } catch (error) {
     return null;
   }
@@ -23,15 +38,23 @@ async function fetchWebpage(url) {
 
 async function analyzeCompetitor(comp) {
   try {
-    const content = await fetchWebpage(comp.website);
-    if (!content) return null;
+    const websiteContent = await fetchWebpage(comp.website);
+    const linkedinContent = await fetchLinkedIn(comp.name);
+    
+    if (!websiteContent && !linkedinContent) return null;
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 1000,
+      max_tokens: 1200,
       messages: [{
         role: 'user',
-        content: `${comp.name}: ${content}
+        content: `Analyze ${comp.name}:
+
+WEBSITE:
+${websiteContent || 'Not available'}
+
+LINKEDIN:
+${linkedinContent || 'Not available'}
 
 Return JSON:
 {
@@ -39,6 +62,8 @@ Return JSON:
   "risk": 50,
   "funding": "Series A or unknown",
   "team": 15,
+  "linkedin_employees": "estimate from LinkedIn or null",
+  "linkedin_stage": "Series A, Funded, Startup, etc or null",
   "strength1": "first",
   "strength2": "second", 
   "strength3": "third",
@@ -92,34 +117,34 @@ export default async function handler(req, res) {
       const riskScore = Math.min(100, Math.max(0, data.risk || 50));
       const threatLevel = riskScore > 70 ? 'critical' : riskScore > 50 ? 'high' : riskScore > 30 ? 'medium' : 'low';
 
-      // UPDATE competitors table with threat score
+      // Update competitors table
       await supabase.from('competitors').update({
         threat_score: riskScore,
         tier: threatLevel,
         last_analyzed: new Date(),
       }).eq('id', comp.id);
 
-      // Delete old profiles
+      // Delete old data
       await supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id);
       await supabase.from('risk_assessment').delete().eq('competitor_id', comp.id);
 
-      // Store profile
+      // Store profile with LinkedIn data
       await supabase.from('competitor_profiles').insert({
         competitor_id: comp.id,
         overall_summary: data.summary || 'Analyzed',
         target_audience: 'Angel Investors',
         primary_value_prop: data.summary || 'Platform',
         business_model: 'SaaS',
-        funding_status: data.funding || 'Unknown',
-        team_size_estimate: data.team || 15,
+        funding_status: data.funding || (data.linkedin_stage || 'Unknown'),
+        team_size_estimate: data.team || (data.linkedin_employees ? parseInt(data.linkedin_employees) : 15),
         risk_score: riskScore,
         threat_to_divi: threatLevel,
         analyzed_at: new Date(),
       });
 
-      // Store strengths
+      // Strengths
       const strengths = [data.strength1, data.strength2, data.strength3].filter(Boolean);
       if (strengths.length > 0) {
         await supabase.from('competitor_strengths').insert(
@@ -133,7 +158,7 @@ export default async function handler(req, res) {
         );
       }
 
-      // Store weaknesses
+      // Weaknesses
       const weaknesses = [data.weakness1, data.weakness2, data.weakness3].filter(Boolean);
       if (weaknesses.length > 0) {
         await supabase.from('competitor_weaknesses').insert(
@@ -148,7 +173,7 @@ export default async function handler(req, res) {
         );
       }
 
-      // Store risks
+      // Risks
       const risks = [data.risk1, data.risk2, data.risk3].filter(Boolean);
       if (risks.length > 0) {
         await supabase.from('risk_assessment').insert(
@@ -162,6 +187,15 @@ export default async function handler(req, res) {
           }))
         );
       }
+
+      // Add LinkedIn research link
+      await supabase.from('research_links').insert({
+        competitor_id: comp.id,
+        link_type: 'linkedin',
+        url: `https://www.linkedin.com/company/${comp.name.toLowerCase().replace(/\s+/g, '-')}`,
+        title: `${comp.name} on LinkedIn`,
+        description: 'LinkedIn company page',
+      });
 
       analyzed++;
     }
