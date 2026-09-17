@@ -134,25 +134,26 @@ export default function Dashboard() {
         );
       }
       if (!res.ok || json.success === false) {
-        alert(json.error || json.message || 'Analysis failed');
-      } else {
-        // Silent refresh — button state already shows Analyzing… / done
-        if (json.failures?.length) {
-          alert(`Finished with ${json.failures.length} failure(s):\n${json.failures.join('; ')}`);
-        }
-        await fetchCompetitors();
-        if (selected) {
-          const refreshed = (await supabase.from('competitors').select('*').eq('id', selected.id).single())
-            .data;
-          if (refreshed) await fetchDetails(refreshed);
-          else if (competitorId) {
-            const one = (await supabase.from('competitors').select('*').eq('id', competitorId).single())
-              .data;
-            if (one) await fetchDetails(one);
-          }
+        throw new Error(json.error || json.message || 'Analysis failed');
+      }
+      if (json.failures?.length) {
+        console.warn('Analysis completed with failures:', json.failures);
+      }
+      await fetchCompetitors();
+      const focusId = selected?.id || competitorId;
+      if (focusId) {
+        const { data: refreshed } = await supabase
+          .from('competitors')
+          .select('*')
+          .eq('id', focusId)
+          .single();
+        if (refreshed) {
+          setSelected(refreshed);
+          await fetchDetails(refreshed);
         }
       }
     } catch (e) {
+      console.error(e);
       alert(e.message);
     } finally {
       setAnalyzing(false);
