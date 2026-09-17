@@ -7,6 +7,83 @@ const supabase = createClient(
     'sb_publishable_uBx9cLk0PYHlOz5-kE3nLA_W8I2jQlq'
 );
 
+function domainFromWebsite(website) {
+  try {
+    return new URL(website.includes('://') ? website : `https://${website}`).hostname.replace(
+      /^www\./,
+      ''
+    );
+  } catch {
+    return null;
+  }
+}
+
+function logoCandidates(website, preferred) {
+  const domain = domainFromWebsite(website);
+  const list = [];
+  if (preferred && !/logo\.clearbit\.com/i.test(preferred)) list.push(preferred);
+  if (domain) {
+    list.push(`https://icon.horse/icon/${domain}`);
+    list.push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`);
+    list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+  }
+  return [...new Set(list.filter(Boolean))];
+}
+
+function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
+  const [idx, setIdx] = useState(0);
+  const candidates = logoCandidates(website, logoUrl);
+  const src = candidates[idx];
+  const initials = String(name || '?')
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  if (!src || idx >= candidates.length) {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 12,
+          background: 'linear-gradient(135deg, #C523A1, #5b2c6f)',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 800,
+          fontSize: size * 0.36,
+          flexShrink: 0,
+          ...style,
+        }}
+        aria-label={`${name} logo`}
+      >
+        {initials}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={`${name} logo`}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'contain',
+        borderRadius: 12,
+        background: '#fff',
+        padding: 6,
+        flexShrink: 0,
+        ...style,
+      }}
+      onError={() => setIdx((i) => i + 1)}
+    />
+  );
+}
+
 export default function Dashboard() {
   const [competitors, setCompetitors] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -93,9 +170,14 @@ export default function Dashboard() {
 
   const addCompetitor = async () => {
     if (!formData.name || !formData.website) return alert('Please fill in all fields');
+    const domain = domainFromWebsite(formData.website);
+    const logo_url = domain
+      ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
+      : null;
     const { error } = await supabase.from('competitors').insert({
       name: formData.name,
       website: formData.website,
+      logo_url,
       status: 'active',
       tier: 'monitor',
       threat_score: 50,
@@ -275,16 +357,12 @@ export default function Dashboard() {
         <div style={styles.mainContent}>
           <div style={styles.profileHeader}>
             <div style={styles.profileHeaderLeft}>
-              {selected.logo_url && (
-                <img
-                  src={selected.logo_url}
-                  alt={selected.name}
-                  style={styles.companyLogo}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              )}
+              <CompanyLogo
+                name={selected.name}
+                website={selected.website}
+                logoUrl={selected.logo_url}
+                size={72}
+              />
               <div>
                 <div style={styles.breadcrumb}>
                   {isDivi(selected) || selected.tier === 'reference'
@@ -866,20 +944,16 @@ export default function Dashboard() {
                 onClick={() => fetchDetails(comp)}
                 style={{ ...styles.compCard, borderTopColor: getTierColor(comp.tier) }}
               >
-                {comp.logo_url && (
-                  <div style={styles.cardLogoContainer}>
-                    <img
-                      src={comp.logo_url}
-                      alt={comp.name}
-                      style={styles.cardLogo}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
                 <div style={styles.compCardTop}>
-                  <h3 style={styles.compCardTitle}>{comp.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+                    <CompanyLogo
+                      name={comp.name}
+                      website={comp.website}
+                      logoUrl={comp.logo_url}
+                      size={40}
+                    />
+                    <h3 style={{ ...styles.compCardTitle, margin: 0 }}>{comp.name}</h3>
+                  </div>
                   <span style={{ ...styles.compBadge, background: getTierColor(comp.tier) }}>
                     {isDivi(comp) || comp.tier === 'reference'
                       ? 'OUR COMPANY'
