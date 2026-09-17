@@ -1,5 +1,5 @@
 /**
- * DEBUG VERSION - Shows what's failing
+ * FIXED VERSION - Better JSON extraction
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -8,20 +8,32 @@ import { createClient } from '@supabase/supabase-js';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-async function analyzeCompetitor(comp) {
-  const logs = [];
+function extractJSON(text) {
+  // Remove markdown code blocks
+  text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+  
+  // Find the first { and last }
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  
+  if (start === -1 || end === -1 || end <= start) return null;
+  
   try {
-    logs.push(`Analyzing ${comp.name}...`);
-    
+    const jsonStr = text.substring(start, end + 1);
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function analyzeCompetitor(comp) {
+  try {
     const response = await fetch(comp.website, { 
       headers: { 'User-Agent': 'Mozilla/5.0' },
       signal: AbortSignal.timeout(5000)
     });
-    logs.push(`Fetch status: ${response.status}`);
-    
     const html = await response.text();
     const content = html.substring(0, 1000);
-    logs.push(`Content: ${content.length} chars`);
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-5',
@@ -32,37 +44,21 @@ async function analyzeCompetitor(comp) {
       }],
     });
 
-    logs.push(`Claude response blocks: ${message.content.length}`);
-
     let text = null;
     for (const block of message.content) {
-      logs.push(`Block type: ${block.type}`);
       if (block.type === 'text') {
         text = block.text;
         break;
       }
     }
     
-    if (!text) {
-      logs.push('ERROR: No text block found');
-      return { success: false, logs };
-    }
-
-    logs.push(`Text: "${text.substring(0, 100)}"`);
-
-    const jsonMatch = text.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
-    if (!jsonMatch) {
-      logs.push(`ERROR: No JSON in response`);
-      return { success: false, logs };
-    }
+    if (!text) return null;
     
-    const data = JSON.parse(jsonMatch[0]);
-    logs.push(`Parsed JSON: risk=${data.risk}`);
-    return { success: true, data, logs };
-
+    const data = extractJSON(text);
+    return data;
   } catch (error) {
-    logs.push(`EXCEPTION: ${error.message}`);
-    return { success: false, logs, error: error.message };
+    console.error(`Error: ${error.message}`);
+    return null;
   }
 }
 
@@ -81,15 +77,10 @@ export default async function handler(req, res) {
     const toAnalyze = allCompetitors?.filter(c => !analyzedSet.has(c.id)).slice(0, 3) || [];
 
     let analyzed = 0;
-    const debugLogs = [];
 
     for (const comp of toAnalyze) {
-      const result = await analyzeCompetitor(comp);
-      debugLogs.push({ competitor: comp.name, ...result });
-
-      if (!result.success || !result.data) continue;
-
-      const data = result.data;
+      const data = await analyzeCompetitor(comp);
+      if (!data) continue;
 
       await supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id);
       await supabase.from('competitor_profiles').insert({
@@ -108,8 +99,8 @@ export default async function handler(req, res) {
         await supabase.from('competitor_strengths').insert(
           data.strengths.map(s => ({
             competitor_id: comp.id,
-            strength_title: s,
-            description: s,
+            strength_title: typeof s === 'string' ? s : s.title || 'Strength',
+            description: typeof s === 'string' ? s : s.description || '',
             why_its_strong: 'Competitive advantage',
             competitive_advantage_level: 'medium',
           }))
@@ -121,11 +112,11 @@ export default async function handler(req, res) {
         await supabase.from('competitor_weaknesses').insert(
           data.weaknesses.map(w => ({
             competitor_id: comp.id,
-            weakness_title: w,
-            description: w,
+            weakness_title: typeof w === 'string' ? w : w.title || 'Weakness',
+            description: typeof w === 'string' ? w : w.description || '',
             why_its_weak: 'Gap in offering',
             opportunity_level: 'medium',
-            divi_advantage: `Divi can win on ${w}`,
+            divi_advantage: `Divi can win on ${typeof w === 'string' ? w : w.title}`,
           }))
         );
       }
@@ -138,8 +129,7 @@ export default async function handler(req, res) {
       analyzed, 
       total: allCompetitors?.length,
       already_analyzed: analyzedIds?.length,
-      remaining: toAnalyze.length,
-      debug: debugLogs
+      remaining: toAnalyze.length - analyzed
     });
   } catch (error) {
     res.status(200).json({ success: false, error: error.message });
