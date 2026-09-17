@@ -105,3 +105,56 @@ export default async function handler(req, res) {
         console.log(`Skipping ${comp.name} - no data`);
         continue;
       }
+
+      console.log(`Storing ${comp.name}...`);
+
+      await supabase.from('competitor_profiles').delete().eq('competitor_id', comp.id);
+      await supabase.from('competitor_profiles').insert({
+        competitor_id: comp.id,
+        overall_summary: data.summary || 'N/A',
+        target_audience: 'Investors',
+        primary_value_prop: data.summary || 'N/A',
+        business_model: 'N/A',
+        risk_score: data.risk || 50,
+        threat_to_divi: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : 'medium',
+        analyzed_at: new Date(),
+      });
+
+      if (data.strengths && data.strengths.length > 0) {
+        await supabase.from('competitor_strengths').delete().eq('competitor_id', comp.id);
+        await supabase.from('competitor_strengths').insert(
+          data.strengths.map(s => ({
+            competitor_id: comp.id,
+            strength_title: typeof s === 'string' ? s : s.title || 'Strength',
+            description: typeof s === 'string' ? s : s.description || '',
+            why_its_strong: 'Competitive advantage',
+            competitive_advantage_level: 'medium',
+          }))
+        );
+      }
+
+      if (data.weaknesses && data.weaknesses.length > 0) {
+        await supabase.from('competitor_weaknesses').delete().eq('competitor_id', comp.id);
+        await supabase.from('competitor_weaknesses').insert(
+          data.weaknesses.map(w => ({
+            competitor_id: comp.id,
+            weakness_title: typeof w === 'string' ? w : w.title || 'Weakness',
+            description: typeof w === 'string' ? w : w.description || '',
+            why_its_weak: 'Gap in offering',
+            opportunity_level: 'medium',
+            divi_advantage: `Divi can win on ${typeof w === 'string' ? w : w.title}`,
+          }))
+        );
+      }
+
+      analyzed++;
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      analyzed
+    });
+  } catch (error) {
+    res.status(200).json({ success: false, error: error.message });
+  }
+}
