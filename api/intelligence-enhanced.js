@@ -145,4 +145,21 @@ export default async function handler(req, res) {
       if (risks.length > 0) {
         await supabase.from('risk_assessment').insert(
           risks.map(r => ({
-            competitor_id:
+            competitor_id: comp.id,
+            risk_category: r.includes('fund') ? 'funding' : r.includes('product') ? 'product' : 'market',
+            risk_level: data.risk > 70 ? 'critical' : data.risk > 50 ? 'high' : 'medium',
+            description: r,
+            potential_impact: 'Competitive threat',
+            mitigation_strategy: 'Monitor and respond',
+          }))
+        );
+      }
+
+      analyzed++;
+    }
+
+    res.status(200).json({ success: true, analyzed, total: allCompetitors.length });
+  } catch (error) {
+    res.status(200).json({ success: false, error: error.message });
+  }
+}
