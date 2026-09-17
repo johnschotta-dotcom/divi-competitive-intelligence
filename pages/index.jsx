@@ -36,19 +36,22 @@ function logoCandidates(website, preferred, name) {
     return [...new Set(list)];
   }
 
-  // Skip dead Clearbit + tiny Google favicon caches when we have better options
-  if (
-    preferred &&
-    !/logo\.clearbit\.com|gstatic\.com\/favicon|google\.com\/s2\/favicons/i.test(preferred)
-  ) {
-    list.push(preferred);
-  }
+  const badPreferred =
+    !preferred ||
+    /logo\.clearbit\.com|gstatic\.com\/favicon|google\.com\/s2\/favicons/i.test(preferred) ||
+    /\/og(\.|$|\/)|opengraph|open-graph|og-image|ogimage|twitter-card|social[-_]?card/i.test(
+      preferred
+    );
 
+  // Site icons first — never lead with OG homepage screenshots (e.g. signed.com/og.png)
   if (domain) {
     list.push(`https://${domain}/apple-touch-icon.png`);
-    list.push(`https://${domain}/apple-touch-icon.jpg`);
-    list.push(`https://${domain}/icon-192.png`);
+    list.push(`https://${domain}/favicon.svg`);
     list.push(`https://www.${domain}/apple-touch-icon.png`);
+    list.push(`https://${domain}/icon-192.png`);
+  }
+  if (!badPreferred) list.push(preferred);
+  if (domain) {
     list.push(`https://icon.horse/icon/${domain}`);
     list.push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`);
     list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
