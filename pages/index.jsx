@@ -136,15 +136,20 @@ export default function Dashboard() {
       if (!res.ok || json.success === false) {
         alert(json.error || json.message || 'Analysis failed');
       } else {
-        alert(
-          `Analyzed ${json.analyzed}/${json.total} competitors` +
-            (json.failures?.length ? `\nFailures: ${json.failures.join('; ')}` : '')
-        );
+        // Silent refresh — button state already shows Analyzing… / done
+        if (json.failures?.length) {
+          alert(`Finished with ${json.failures.length} failure(s):\n${json.failures.join('; ')}`);
+        }
         await fetchCompetitors();
         if (selected) {
           const refreshed = (await supabase.from('competitors').select('*').eq('id', selected.id).single())
             .data;
           if (refreshed) await fetchDetails(refreshed);
+          else if (competitorId) {
+            const one = (await supabase.from('competitors').select('*').eq('id', competitorId).single())
+              .data;
+            if (one) await fetchDetails(one);
+          }
         }
       }
     } catch (e) {
