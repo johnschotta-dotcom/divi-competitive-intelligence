@@ -133,6 +133,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showScoringGuide, setShowScoringGuide] = useState(false);
   const [formData, setFormData] = useState({ name: '', website: '' });
@@ -260,45 +261,93 @@ export default function Dashboard() {
 
   const runAnalysis = async (competitorId) => {
     setAnalyzing(true);
+    setAnalysisProgress(null);
     try {
-      const url = competitorId ? `/api/intelligence?id=${competitorId}` : '/api/intelligence';
-      const res = await fetch(url);
-      const raw = await res.text();
-      let json;
-      try {
-        json = JSON.parse(raw);
-      } catch {
-        const snippet = (raw || '').slice(0, 240).replace(/\s+/g, ' ');
-        throw new Error(
-          res.status === 504 || /timed out|timeout|An error occurred/i.test(raw)
-            ? `Analysis timed out or crashed on the server (HTTP ${res.status}). Re-analyze one competitor at a time, and ensure Vercel function duration is high enough. Details: ${snippet || 'empty response'}`
-            : `Server returned non-JSON (HTTP ${res.status}): ${snippet || 'empty response'}`
-        );
-      }
-      if (!res.ok || json.success === false) {
-        throw new Error(json.error || json.message || 'Analysis failed');
-      }
-      if (json.failures?.length) {
-        console.warn('Analysis completed with failures:', json.failures);
-      }
-      await fetchCompetitors();
-      const focusId = selected?.id || competitorId;
-      if (focusId) {
-        const { data: refreshed } = await supabase
-          .from('competitors')
-          .select('*')
-          .eq('id', focusId)
-          .single();
-        if (refreshed) {
-          setSelected(refreshed);
-          await fetchDetails(refreshed);
+      // Single company — one Vercel invocation
+      if (competitorId) {
+        const res = await fetch(`/api/intelligence?id=${competitorId}`);
+        const raw = await res.text();
+        let json;
+        try {
+          json = JSON.parse(raw);
+        } catch {
+          const snippet = (raw || '').slice(0, 240).replace(/\s+/g, ' ');
+          throw new Error(
+            res.status === 504 || /timed out|timeout|An error occurred/i.test(raw)
+              ? `Analysis timed out (HTTP ${res.status}). Try again for this company. Details: ${snippet || 'empty response'}`
+              : `Server returned non-JSON (HTTP ${res.status}): ${snippet || 'empty response'}`
+          );
         }
+        if (!res.ok || json.success === false) {
+          throw new Error(json.error || json.message || 'Analysis failed');
+        }
+        if (json.failures?.length) {
+          console.warn('Analysis completed with failures:', json.failures);
+        }
+        await fetchCompetitors();
+        const focusId = selected?.id || competitorId;
+        if (focusId) {
+          const { data: refreshed } = await supabase
+            .from('competitors')
+            .select('*')
+            .eq('id', focusId)
+            .single();
+          if (refreshed) {
+            setSelected(refreshed);
+            await fetchDetails(refreshed);
+          }
+        }
+        return;
+      }
+
+      // Full run — one company per request so each gets its own 300s Vercel budget
+      const queue = [...competitors];
+      if (!queue.length) {
+        throw new Error('No competitors to analyze');
+      }
+      const failures = [];
+      for (let i = 0; i < queue.length; i++) {
+        const comp = queue[i];
+        setAnalysisProgress({
+          current: i + 1,
+          total: queue.length,
+          name: comp.name,
+        });
+        try {
+          const res = await fetch(`/api/intelligence?id=${comp.id}`);
+          const raw = await res.text();
+          let json;
+          try {
+            json = JSON.parse(raw);
+          } catch {
+            failures.push(`${comp.name}: timed out or bad response`);
+            continue;
+          }
+          if (!res.ok || json.success === false) {
+            failures.push(`${comp.name}: ${json.error || json.message || 'failed'}`);
+            continue;
+          }
+          if (json.failures?.length) {
+            failures.push(...json.failures.map((f) => `${comp.name}: ${f}`));
+          }
+        } catch (err) {
+          failures.push(`${comp.name}: ${err.message || 'failed'}`);
+        }
+        // Refresh list between companies so scores update live
+        await fetchCompetitors();
+      }
+      if (failures.length) {
+        console.warn('Full analysis finished with failures:', failures);
+        alert(
+          `Finished ${queue.length} companies with ${failures.length} issue(s). Check the console for details.`
+        );
       }
     } catch (e) {
       console.error(e);
       alert(e.message);
     } finally {
       setAnalyzing(false);
+      setAnalysisProgress(null);
     }
   };
 
@@ -1071,7 +1120,7 @@ export default function Dashboard() {
               onClick={() => {
                 if (
                   !confirm(
-                    'Full analysis can take several minutes and may time out on Vercel. Prefer opening one competitor and clicking Re-analyze. Continue with full run?'
+                    `Run full analysis one company at a time (${competitors.length} total)? Keep this tab open — each company uses its own Vercel timeout, so the batch will not hit the 5‑minute server limit.`
                   )
                 ) {
                   return;
@@ -1079,9 +1128,18 @@ export default function Dashboard() {
                 runAnalysis();
               }}
               style={styles.ghostBtn}
-              disabled={analyzing}
+              disabled={analyzing || !competitors.length}
+              title={
+                analysisProgress
+                  ? `${analysisProgress.current}/${analysisProgress.total}: ${analysisProgress.name}`
+                  : 'Analyzes each company in its own request'
+              }
             >
-              {analyzing ? 'Analyzing…' : 'Run full analysis'}
+              {analyzing
+                ? analysisProgress
+                  ? `${analysisProgress.current}/${analysisProgress.total}: ${analysisProgress.name}`
+                  : 'Analyzing…'
+                : 'Run full analysis'}
             </button>
             <button
               onClick={() => {

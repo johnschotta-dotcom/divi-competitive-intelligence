@@ -54,6 +54,8 @@ npm run dev
 
 ## Research pipeline (website positioning)
 
+## Research pipeline (website positioning)
+
 For each competitor the agent:
 
 1. Crawls **Divi’s** website from the homepage (follows About / Product / Blog / Updates links on-site)
@@ -62,11 +64,11 @@ For each competitor the agent:
 4. Asks Claude to compare **only those page corpora**
 5. Outputs market overlap, true-competitor label, wins / gaps / sameness / differentiation
 
+**Full analysis without Vercel timeouts:** the dashboard **Run full analysis** button analyzes **one company per request** (each gets its own 5‑minute limit). Keep the tab open until it finishes. The daily cron refreshes the 2 oldest profiles (`?stale=1&limit=2`) so overnight jobs stay under the limit.
+
 Individual LinkedIn URLs on team pages are saved when found. Company LinkedIn pages are usually login-walled and are not used as person profiles.
 
 Also run [`supabase/03_positioning.sql`](supabase/03_positioning.sql) once for new overlap columns.
-
-Tip: re-analyze one company at a time if a full batch times out (`ANALYSIS_CONCURRENCY` defaults to 2).
 
 ## Notes
 
