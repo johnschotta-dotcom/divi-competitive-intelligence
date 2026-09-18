@@ -1005,15 +1005,26 @@ export default function Dashboard() {
 
       <div style={styles.mainContent}>
         <div style={styles.dashHeader}>
-          <h1 style={styles.dashTitle}>Competitive Landscape</h1>
-          <p style={styles.dashSubtitle}>
-            Website + LinkedIn positioning vs DIVI — who overlaps our market, where we win, where we
-            fall short, and who is truly chasing the same customers ({competitors.length} companies)
-          </p>
+          <div style={styles.dashHeaderTop}>
+            <div style={styles.dashHeaderCopy}>
+              <div style={styles.breadcrumb}>COMPETITIVE LANDSCAPE</div>
+              <h1 style={styles.dashTitle}>Companies vs Divi</h1>
+              <p style={styles.dashSubtitle}>
+                Website and LinkedIn positioning — market overlap, where Divi wins or falls short,
+                and who is chasing the same customers.
+              </p>
+            </div>
+            <div style={styles.dashCount}>
+              <div style={styles.dashCountValue}>{competitors.length}</div>
+              <div style={styles.dashCountLabel}>
+                {competitors.length === 1 ? 'company' : 'companies'}
+              </div>
+            </div>
+          </div>
           <div style={styles.filterRow}>
             <input
               type="search"
-              placeholder="Search by company name…"
+              placeholder="Search companies…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={styles.searchInput}
@@ -1025,7 +1036,7 @@ export default function Dashboard() {
               style={styles.filterSelect}
               aria-label="Filter by competitor type"
             >
-              <option value="all">All types</option>
+              <option value="all">All competitor types</option>
               <option value="direct">Direct</option>
               <option value="adjacent">Adjacent</option>
               <option value="tangential">Tangential</option>
@@ -1081,10 +1092,8 @@ export default function Dashboard() {
               {(searchQuery || labelFilter !== 'all') && (
                 <p style={styles.filterMeta}>
                   Showing {filtered.length} of {competitors.length}
-                  {searchQuery ? ` named “${searchQuery.trim()}”` : ''}
-                  {labelFilter !== 'all'
-                    ? ` · ${labelFilter.replace(/_/g, ' ')}`
-                    : ''}
+                  {searchQuery ? ` matching “${searchQuery.trim()}”` : ''}
+                  {labelFilter !== 'all' ? ` · ${labelFilter.replace(/_/g, ' ')}` : ''}
                 </p>
               )}
               {filtered.length === 0 ? (
@@ -1255,51 +1264,91 @@ const styles = {
     marginTop: 12,
   },
   mainContent: { maxWidth: '1400px', margin: '0 auto', padding: '40px' },
-  dashHeader: { marginBottom: 40, textAlign: 'center' },
-  dashTitle: { margin: 0, fontSize: '2.4em', fontWeight: 800 },
-  dashSubtitle: {
-    margin: '12px 0 0',
-    fontSize: '1.05em',
-    opacity: 0.7,
+  dashHeader: {
+    marginBottom: 32,
+    paddingBottom: 28,
+    borderBottom: '1px solid #2d2d2d',
+  },
+  dashHeaderTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 24,
+    flexWrap: 'wrap',
+    marginBottom: 22,
+  },
+  dashHeaderCopy: {
+    flex: '1 1 320px',
+    minWidth: 0,
     maxWidth: 720,
-    marginLeft: 'auto',
-    marginRight: 'auto',
+  },
+  dashTitle: {
+    margin: '0 0 10px',
+    fontSize: '2.1em',
+    fontWeight: 800,
+    letterSpacing: '-0.02em',
+    lineHeight: 1.15,
+  },
+  dashSubtitle: {
+    margin: 0,
+    fontSize: '0.98em',
+    lineHeight: 1.55,
+    color: '#a8a8a8',
+    maxWidth: 560,
+  },
+  dashCount: {
+    background: '#1a1a1a',
+    border: '1px solid #2d2d2d',
+    borderRadius: 12,
+    padding: '14px 20px',
+    minWidth: 110,
+    textAlign: 'center',
+  },
+  dashCountValue: {
+    fontSize: '1.8em',
+    fontWeight: 800,
+    color: '#C523A1',
+    lineHeight: 1,
+  },
+  dashCountLabel: {
+    marginTop: 6,
+    fontSize: '0.75em',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: '#888',
+    fontWeight: 600,
   },
   filterRow: {
     display: 'flex',
     gap: 12,
-    justifyContent: 'center',
     flexWrap: 'wrap',
-    marginTop: 22,
-    maxWidth: 720,
-    marginLeft: 'auto',
-    marginRight: 'auto',
+    alignItems: 'center',
   },
   searchInput: {
-    flex: '1 1 260px',
+    flex: '1 1 280px',
     minWidth: 200,
     background: '#1a1a1a',
     border: '1px solid #333',
     color: '#f5f5f5',
     borderRadius: 8,
     padding: '12px 14px',
-    fontSize: '1em',
+    fontSize: '0.95em',
   },
   filterSelect: {
-    flex: '0 1 220px',
+    flex: '0 1 200px',
     background: '#1a1a1a',
     border: '1px solid #333',
     color: '#f5f5f5',
     borderRadius: 8,
     padding: '12px 14px',
-    fontSize: '1em',
+    fontSize: '0.95em',
     cursor: 'pointer',
   },
   filterMeta: {
-    textAlign: 'center',
-    opacity: 0.65,
-    margin: '0 0 18px',
-    fontSize: '0.95em',
+    textAlign: 'left',
+    color: '#888',
+    margin: '0 0 16px',
+    fontSize: '0.88em',
   },
   formCard: {
     background: '#1a1a1a',
