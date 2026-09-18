@@ -62,7 +62,7 @@ For each competitor the agent:
 2. Crawls each **competitor** the same way — discovers internal nav links, prioritizes about/product/pricing/blog/news/updates, and pulls a few latest blog posts
 3. Extracts team from page markup + schema.org JSON-LD (`Person` / Organization founders), prefers leadership roles, and enriches bios (local prior-company parsing; optional People Data Labs when `PEOPLE_DATA_LABS_API_KEY` is set)
 4. Asks Claude to compare **only those page corpora**
-5. Outputs market overlap, true-competitor label, wins / gaps / sameness / differentiation
+5. Outputs overlap level (high / medium / low / none) with matching designation (direct / adjacent / tangential / not a competitor), plus wins / gaps / sameness / differentiation
 
 **Full analysis without Vercel timeouts:** the dashboard **Run full analysis** button analyzes **one company per request** (each gets its own 5‑minute limit). Keep the tab open until it finishes. The daily cron refreshes the 2 oldest profiles (`?stale=1&limit=2`) so overnight jobs stay under the limit.
 

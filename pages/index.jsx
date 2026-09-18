@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { alignedOverlap, displayCompetitorLabel, labelFromOverlapScore, tierFromCompetitorLabel } from '../lib/overlap';
+import {
+  resolveOverlap,
+  formatOverlapLevel,
+  formatCompetitorLabel,
+  tierFromCompetitorLabel,
+} from '../lib/overlap';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://znusgttwjfuuzhycuvhs.supabase.co',
@@ -152,19 +157,29 @@ export default function Dashboard() {
     return n === 'divi' || w.includes('divi.fund');
   };
 
-  /** Prefer stored not_a_competitor; otherwise score drives the band. */
+  /** High/medium/low/none → direct/adjacent/tangential/not a competitor */
   const overlapMeta = (comp) => {
     if (isDivi(comp) || comp?.tier === 'reference') {
-      return { score: 100, label: 'reference', tier: 'reference' };
+      return {
+        level: 'reference',
+        label: 'reference',
+        score: 100,
+        tier: 'reference',
+        levelDisplay: 'High',
+        labelDisplay: 'Gold standard',
+      };
     }
-    const aligned = alignedOverlap(
-      comp?.market_overlap_score ?? comp?.threat_score,
-      comp?.true_competitor_label
-    );
+    const aligned = resolveOverlap({
+      score: comp?.market_overlap_score ?? comp?.threat_score,
+      label: comp?.true_competitor_label,
+    });
     return {
-      score: aligned.score ?? comp?.market_overlap_score ?? comp?.threat_score ?? null,
+      level: aligned.level,
       label: aligned.label || comp?.true_competitor_label || null,
+      score: aligned.score ?? comp?.market_overlap_score ?? comp?.threat_score ?? null,
       tier: tierFromCompetitorLabel(aligned.label) || comp?.tier || 'monitor',
+      levelDisplay: formatOverlapLevel(aligned.level),
+      labelDisplay: formatCompetitorLabel(aligned.label || comp?.true_competitor_label),
     };
   };
 
@@ -264,12 +279,12 @@ export default function Dashboard() {
     if (!comp?.id) return;
     if (
       !confirm(
-        `Mark ${comp.name} as not a competitor? This sets overlap to 10/100 and label to “not a competitor”.`
+        `Mark ${comp.name} as not a competitor? This sets overlap to None and designation to “Not a competitor”.`
       )
     ) {
       return;
     }
-    const aligned = alignedOverlap(10, 'not_a_competitor');
+    const aligned = resolveOverlap({ level: 'none', label: 'not_a_competitor' });
     await supabase
       .from('competitors')
       .update({
@@ -604,22 +619,19 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={styles.profileHeaderRight}>
-                  <div style={styles.overlapBlock}>
+              <div style={styles.overlapBlock}>
                 <div style={styles.overlapLabel}>
                   {isDivi(selected) || selected.tier === 'reference'
-                    ? 'Reference score'
+                    ? 'Reference overlap'
                     : 'Market overlap vs Divi'}
                 </div>
-                <div style={styles.overlapScoreRow}>
-                  <span
-                    style={{
-                      ...styles.overlapScore,
-                      color: getTierColor(tierForColor),
-                    }}
-                  >
-                    {overlap ?? '—'}
-                  </span>
-                  <span style={styles.overlapDenom}>/100</span>
+                <div
+                  style={{
+                    ...styles.overlapLevel,
+                    color: getTierColor(tierForColor),
+                  }}
+                >
+                  {meta.levelDisplay}
                 </div>
                 <div
                   style={{
@@ -627,14 +639,12 @@ export default function Dashboard() {
                     color: getTierColor(tierForColor),
                   }}
                 >
-                  {isDivi(selected) || selected.tier === 'reference'
-                    ? 'Gold standard'
-                    : (trueLabel || '—').replace(/_/g, ' ')}
+                  {meta.labelDisplay}
                 </div>
                 <p style={styles.overlapNote}>
                   {isDivi(selected) || selected.tier === 'reference'
                     ? 'Internal baseline — competitors are scored against this'
-                    : 'Job-to-be-done overlap from website evidence'}
+                    : 'High → Direct · Medium → Adjacent · Low → Tangential · None → Not a competitor'}
                 </p>
               </div>
 
@@ -1272,44 +1282,42 @@ export default function Dashboard() {
               </button>
             </div>
             <p style={styles.scoringLead}>
-              Two separate scores. Overlap answers “are they chasing the same job as Divi?” Site tone
-              answers “how clear is their website messaging?”
+              Two readings of the same judgment. Overlap level (High / Medium / Low / None) maps
+              directly to designation (Direct / Adjacent / Tangential / Not a competitor). Site tone
+              is separate — messaging clarity, not competitive overlap.
             </p>
 
-            <h4 style={styles.scoringH}>Market overlap (0–100)</h4>
+            <h4 style={styles.scoringH}>Market overlap</h4>
             <p style={styles.scoringBody}>
-              Claude scores how similar the competitor’s <strong>primary buyer job</strong> is to
-              Divi’s — especially angel/individual-investor portfolio tracking, monitoring, and
-              reporting. This is job-to-be-done overlap from website evidence, not a feature checklist.
-              Missing AI, syndicates, or education does not knock a portfolio-ops product out of
-              Direct; those gaps show up in the feature matrix instead.
+              Claude picks a qualitative overlap level from website evidence (primary buyer job vs
+              Divi). That level maps 1:1 to the competitor designation — no 0–100 score.
             </p>
             <div style={styles.scoringTable}>
               <div style={styles.scoringRow}>
-                <span style={styles.scoringRange}>80–100 · Direct</span>
+                <span style={styles.scoringRange}>High → Direct</span>
                 <span style={styles.scoringDesc}>
                   Same primary job as Divi (portfolio ops for angels / individual investors).
                 </span>
               </div>
               <div style={styles.scoringRow}>
-                <span style={styles.scoringRange}>50–79 · Adjacent</span>
+                <span style={styles.scoringRange}>Medium → Adjacent</span>
                 <span style={styles.scoringDesc}>
                   Investor software with a different primary job (GP fund admin, LP portals, CRM-only,
                   banking, back-office).
                 </span>
               </div>
               <div style={styles.scoringRow}>
-                <span style={styles.scoringRange}>20–49 · Tangential</span>
+                <span style={styles.scoringRange}>Low → Tangential</span>
                 <span style={styles.scoringDesc}>
                   Shared audience only (deal marketplaces, content, communities) without portfolio ops
                   as the core offer.
                 </span>
               </div>
               <div style={styles.scoringRow}>
-                <span style={styles.scoringRange}>0–19 · Not a competitor</span>
+                <span style={styles.scoringRange}>None → Not a competitor</span>
                 <span style={styles.scoringDesc}>
-                  Clearly outside angel / portfolio operating software (context-only companies). Use
-                  “Mark as not a competitor” on a profile if analysis over-scored them.
+                  Outside angel / portfolio operating software (context-only). Use “Mark as not a
+                  competitor” on a profile if needed.
                 </span>
               </div>
             </div>
@@ -1421,7 +1429,7 @@ export default function Dashboard() {
                         <span style={{ ...styles.compBadge, background: getTierColor(meta.tier) }}>
                           {isDivi(comp) || comp.tier === 'reference'
                             ? 'OUR COMPANY'
-                            : (meta.label || 'monitor').replace(/_/g, ' ').toUpperCase()}
+                            : meta.levelDisplay.toUpperCase()}
                         </span>
                       </div>
                       {comp.tagline && <p style={styles.cardTagline}>{comp.tagline}</p>}
@@ -1429,27 +1437,28 @@ export default function Dashboard() {
                         <div style={styles.compCardScore}>
                           <div
                             style={{
-                              fontSize: '2.2em',
-                              fontWeight: 900,
+                              fontSize: '1.55em',
+                              fontWeight: 800,
                               color: getTierColor(meta.tier),
+                              letterSpacing: '-0.02em',
                             }}
                           >
-                            {meta.score ?? '—'}
+                            {meta.levelDisplay}
                           </div>
-                          <div style={styles.scoreLabel}>Overlap w/ Divi</div>
+                          <div style={styles.scoreLabel}>Overlap</div>
                         </div>
                         <div style={styles.compCardScore}>
                           <div
                             style={{
                               fontSize: '1.05em',
-                              fontWeight: 800,
-                              marginTop: 18,
-                              textTransform: 'capitalize',
+                              fontWeight: 700,
+                              marginTop: 8,
+                              textTransform: 'none',
                             }}
                           >
-                            {(meta.label || '—').replace(/_/g, ' ')}
+                            {meta.labelDisplay}
                           </div>
-                          <div style={styles.scoreLabel}>True competitor?</div>
+                          <div style={styles.scoreLabel}>Designation</div>
                         </div>
                       </div>
                       <div style={styles.cardMeta}>Grounded in website claims</div>
@@ -1786,31 +1795,20 @@ const styles = {
     textTransform: 'uppercase',
     color: '#888',
   },
-  overlapScoreRow: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: 6,
-  },
-  overlapScore: {
-    fontSize: '3.1em',
+  overlapLevel: {
+    fontSize: '2.6em',
     fontWeight: 800,
-    lineHeight: 1,
+    lineHeight: 1.05,
     letterSpacing: '-0.03em',
-  },
-  overlapDenom: {
-    fontSize: '1em',
-    color: '#777',
-    fontWeight: 500,
   },
   overlapBand: {
     marginTop: 2,
     fontSize: '1.05em',
     fontWeight: 700,
-    textTransform: 'capitalize',
   },
   overlapNote: {
     margin: '6px 0 0',
-    maxWidth: 240,
+    maxWidth: 260,
     fontSize: '0.78em',
     lineHeight: 1.4,
     color: '#777',
