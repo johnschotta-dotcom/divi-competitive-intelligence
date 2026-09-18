@@ -135,6 +135,7 @@ export default function Dashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', website: '' });
   const [section, setSection] = useState('comparison');
+  const [exporting, setExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [labelFilter, setLabelFilter] = useState('all');
 
@@ -275,6 +276,33 @@ export default function Dashboard() {
     }
   };
 
+  const exportProfile = async (format) => {
+    if (!selected) return;
+    setExporting(true);
+    try {
+      const { buildExportModel, downloadProfilePdf, downloadProfileDocx } = await import(
+        '../lib/exportProfile'
+      );
+      const model = buildExportModel({
+        competitor: selected,
+        profile,
+        comparison,
+        strengths,
+        weaknesses,
+        founders,
+        sentiment,
+        isDivi: isDivi(selected) || selected.tier === 'reference',
+      });
+      if (format === 'pdf') await downloadProfilePdf(model);
+      else await downloadProfileDocx(model);
+    } catch (e) {
+      console.error(e);
+      alert(e.message || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const getTierColor = (tier) => {
     if (!tier) return '#3498db';
     const t = tier.toLowerCase();
@@ -363,6 +391,11 @@ export default function Dashboard() {
       selected.market_overlap_score ?? comparison?.market_overlap_score ?? selected.threat_score;
     const trueLabel =
       selected.true_competitor_label || comparison?.true_competitor_label || selected.tier;
+    const canExport = !!(
+      comparison?.overall_verdict ||
+      profile?.overall_summary ||
+      selected.last_analyzed
+    );
 
     return (
       <div style={styles.container}>
@@ -373,6 +406,22 @@ export default function Dashboard() {
               <span>Divi Intelligence</span>
             </div>
             <div style={styles.navActions}>
+              <button
+                onClick={() => exportProfile('pdf')}
+                style={styles.ghostBtn}
+                disabled={!canExport || exporting || detailLoading}
+                title={canExport ? 'Download PDF' : 'Analyze this company first'}
+              >
+                {exporting ? 'Exporting…' : 'PDF'}
+              </button>
+              <button
+                onClick={() => exportProfile('docx')}
+                style={styles.ghostBtn}
+                disabled={!canExport || exporting || detailLoading}
+                title={canExport ? 'Download Word doc' : 'Analyze this company first'}
+              >
+                DOCX
+              </button>
               <button
                 onClick={() => runAnalysis(selected.id)}
                 style={styles.ghostBtn}
@@ -442,6 +491,28 @@ export default function Dashboard() {
               <div style={styles.estimateNote}>
                 Evidence: websites + LinkedIn only (not funding databases or press scrapes)
               </div>
+              {canExport ? (
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => exportProfile('pdf')}
+                    style={styles.ghostBtn}
+                    disabled={exporting}
+                  >
+                    {exporting ? 'Exporting…' : 'Download PDF'}
+                  </button>
+                  <button
+                    onClick={() => exportProfile('docx')}
+                    style={styles.ghostBtn}
+                    disabled={exporting}
+                  >
+                    Download DOCX
+                  </button>
+                </div>
+              ) : (
+                <p style={{ ...styles.estimateNote, marginTop: 12 }}>
+                  Re-analyze to enable PDF / DOCX download.
+                </p>
+              )}
               <button onClick={() => deleteCompetitor(selected.id)} style={styles.deleteBtn}>
                 Delete
               </button>
