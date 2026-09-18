@@ -582,27 +582,6 @@ export default function Dashboard() {
                   </div>
                 ) : null}
 
-                {media.filter((m) => m.source_name === 'crawled_page').length > 0 ? (
-                  <div style={styles.snapSection}>
-                    <div style={styles.snapSectionLabel}>Pages we read</div>
-                    <div style={styles.snapLinkList}>
-                      {media
-                        .filter((m) => m.source_name === 'crawled_page')
-                        .map((m) => (
-                          <a
-                            key={m.id || m.title}
-                            href={m.url || m.title}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={styles.snapLink}
-                          >
-                            {m.title}
-                          </a>
-                        ))}
-                    </div>
-                  </div>
-                ) : null}
-
                 {media.filter((m) => m.source_name === 'website_heading').length > 0 ? (
                   <div style={styles.snapSection}>
                     <div style={styles.snapSectionLabel}>Headlines / sections on site</div>
@@ -654,6 +633,27 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+
+                {media.filter((m) => m.source_name === 'crawled_page').length > 0 ? (
+                  <div style={styles.snapSection}>
+                    <div style={styles.snapSectionLabel}>Pages we read</div>
+                    <div style={styles.snapLinkList}>
+                      {media
+                        .filter((m) => m.source_name === 'crawled_page')
+                        .map((m) => (
+                          <a
+                            key={m.id || m.title}
+                            href={m.url || m.title}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={styles.snapLink}
+                          >
+                            {m.title}
+                          </a>
+                        ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           )}
