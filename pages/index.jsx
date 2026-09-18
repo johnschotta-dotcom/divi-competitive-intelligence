@@ -1190,7 +1190,28 @@ export default function Dashboard() {
               Scoring
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
+                const password = window.prompt('Enter password to run full analysis:');
+                if (password == null) return; // cancelled
+                if (!String(password).trim()) {
+                  alert('Password required.');
+                  return;
+                }
+                try {
+                  const authRes = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password }),
+                  });
+                  const authJson = await authRes.json().catch(() => ({}));
+                  if (!authRes.ok || authJson.success === false) {
+                    alert(authJson.error || 'Incorrect password');
+                    return;
+                  }
+                } catch (e) {
+                  alert(e.message || 'Could not verify password');
+                  return;
+                }
                 if (
                   !confirm(
                     `Run full analysis one company at a time (${competitors.length} total)? Keep this tab open — each company uses its own Vercel timeout, so the batch will not hit the 5‑minute server limit.`
