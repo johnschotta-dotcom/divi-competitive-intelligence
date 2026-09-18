@@ -48,14 +48,16 @@ npm run dev
 - Cron (daily 09:00 UTC): `vercel.json` → `GET /api/intelligence`
 - Single competitor: `GET /api/intelligence?id=<competitor_id>`
 
-## Research pipeline (website + LinkedIn positioning)
+## Research pipeline (website positioning)
 
 For each competitor the agent:
 
-1. Crawls **Divi’s** website from the homepage (follows About / Product / Blog / Updates links on-site) + LinkedIn if linked
+1. Crawls **Divi’s** website from the homepage (follows About / Product / Blog / Updates links on-site)
 2. Crawls each **competitor** the same way — discovers internal nav links, prioritizes about/product/pricing/blog/news/updates, and pulls a few latest blog posts
 3. Asks Claude to compare **only those page corpora**
 4. Outputs market overlap, true-competitor label, wins / gaps / sameness / differentiation
+
+LinkedIn company pages are attempted when linked from a site, but login walls usually block usable copy. Individual LinkedIn URLs on team pages are still saved when found.
 
 Also run [`supabase/03_positioning.sql`](supabase/03_positioning.sql) once for new overlap columns.
 
