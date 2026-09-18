@@ -448,8 +448,8 @@ export default function Dashboard() {
               <div>
                 <div style={styles.breadcrumb}>
                   {isDivi(selected) || selected.tier === 'reference'
-                    ? 'DIVI GOLD STANDARD (OUR COMPANY)'
-                    : 'COMPETITIVE PROFILE · SCORED VS DIVI'}
+                    ? 'Divi gold standard (our company)'
+                    : 'Competitive profile · scored vs Divi'}
                 </div>
                 <h1 style={styles.profileTitle}>{selected.name}</h1>
                 {selected.tagline && <p style={styles.tagline}>{selected.tagline}</p>}
@@ -755,9 +755,13 @@ export default function Dashboard() {
           {!detailLoading && section === 'founders' && (
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Team listed on website</h2>
+              <p style={{ opacity: 0.65, fontSize: 13, marginTop: 0, marginBottom: 16, lineHeight: 1.45 }}>
+                From team/about pages and JSON-LD. Prior roles parsed from bios; optional People Data
+                Labs enrichment when an API key is configured.
+              </p>
               {founders.length === 0 ? (
                 <p style={styles.emptyState}>
-                  No team members extracted yet — re-analyze after deploy (team pages like /team are now crawled with full roster extraction).
+                  No team members extracted yet — re-analyze after deploy (team pages and JSON-LD Person markup are crawled).
                 </p>
               ) : (
                 <div style={styles.founderGrid}>
@@ -765,6 +769,21 @@ export default function Dashboard() {
                     <div key={f.id} style={styles.founderCard}>
                       <div style={styles.founderName}>{f.name}</div>
                       <div style={styles.founderTitle}>{f.title}</div>
+                      {f.location && (
+                        <div style={{ ...styles.founderTitle, opacity: 0.75 }}>{f.location}</div>
+                      )}
+                      {f.prior_companies && (
+                        <p style={styles.listItemDesc}>
+                          <span style={{ fontWeight: 600 }}>Prior: </span>
+                          {f.prior_companies}
+                        </p>
+                      )}
+                      {f.education && (
+                        <p style={styles.listItemDesc}>
+                          <span style={{ fontWeight: 600 }}>Education: </span>
+                          {f.education}
+                        </p>
+                      )}
                       {f.bio && <p style={styles.listItemDesc}>{f.bio}</p>}
                       <div style={styles.socialRow}>
                         {f.linkedin_url && (
@@ -778,6 +797,11 @@ export default function Dashboard() {
                           </a>
                         )}
                       </div>
+                      {f.enrichment_source && (
+                        <div style={{ opacity: 0.55, fontSize: 11, marginTop: 8 }}>
+                          Source: {String(f.enrichment_source).replace(/_/g, ' ')}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1008,7 +1032,7 @@ export default function Dashboard() {
           <div style={styles.dashHeaderTop}>
             <div style={styles.dashHeaderCopy}>
               <h1 style={styles.dashTitle}>Competitive Landscape</h1>
-              <h2 style={styles.dashKicker}>Competitors vs. DIVI</h2>
+              <h2 style={styles.dashKicker}>Competitors vs. Divi</h2>
               <p style={styles.dashSubtitle}>
                 Website positioning vs Divi — market overlap, where Divi wins or falls short, and who
                 is chasing the same customers.

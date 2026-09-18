@@ -83,6 +83,10 @@ CREATE TABLE IF NOT EXISTS competitor_founders (
   linkedin_url TEXT,
   twitter_url TEXT,
   bio TEXT,
+  prior_companies TEXT,
+  education TEXT,
+  location VARCHAR(255),
+  enrichment_source VARCHAR(100),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -147,7 +151,7 @@ CREATE TABLE IF NOT EXISTS tech_stack (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- DIVI vs competitor comparison
+-- Divi vs competitor comparison
 CREATE TABLE IF NOT EXISTS divi_comparisons (
   id BIGSERIAL PRIMARY KEY,
   competitor_id BIGINT REFERENCES competitors(id) ON DELETE CASCADE,

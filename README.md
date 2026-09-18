@@ -24,6 +24,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 # optional
 ANTHROPIC_MODEL=claude-sonnet-5
 ANTHROPIC_MODEL_FALLBACK=claude-haiku-4-5
+PEOPLE_DATA_LABS_API_KEY=   # optional founder enrichment (PDL_API_KEY also accepted)
 ```
 
 ### 2. Database
@@ -33,8 +34,11 @@ ANTHROPIC_MODEL_FALLBACK=claude-haiku-4-5
 
 [`supabase/02_deep_profiles.sql`](supabase/02_deep_profiles.sql)
 
-This adds founders, funding rounds, history, sentiment, media, tech stack, and Divi comparison tables, plus extra competitor columns.
+3. Run founder enrichment columns:
 
+[`supabase/04_founder_enrichment.sql`](supabase/04_founder_enrichment.sql)
+
+This adds founders, funding rounds, history, sentiment, media, tech stack, and Divi comparison tables, plus extra competitor columns.
 ### 3. Local
 
 ```bash
@@ -54,10 +58,11 @@ For each competitor the agent:
 
 1. Crawls **Divi’s** website from the homepage (follows About / Product / Blog / Updates links on-site)
 2. Crawls each **competitor** the same way — discovers internal nav links, prioritizes about/product/pricing/blog/news/updates, and pulls a few latest blog posts
-3. Asks Claude to compare **only those page corpora**
-4. Outputs market overlap, true-competitor label, wins / gaps / sameness / differentiation
+3. Extracts team from page markup + schema.org JSON-LD (`Person` / Organization founders), prefers leadership roles, and enriches bios (local prior-company parsing; optional People Data Labs when `PEOPLE_DATA_LABS_API_KEY` is set)
+4. Asks Claude to compare **only those page corpora**
+5. Outputs market overlap, true-competitor label, wins / gaps / sameness / differentiation
 
-LinkedIn company pages are attempted when linked from a site, but login walls usually block usable copy. Individual LinkedIn URLs on team pages are still saved when found.
+Individual LinkedIn URLs on team pages are saved when found. Company LinkedIn pages are usually login-walled and are not used as person profiles.
 
 Also run [`supabase/03_positioning.sql`](supabase/03_positioning.sql) once for new overlap columns.
 
