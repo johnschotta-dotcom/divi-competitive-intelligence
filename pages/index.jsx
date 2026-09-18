@@ -625,7 +625,7 @@ export default function Dashboard() {
                       ) : (
                         <div style={styles.snapItemList}>
                           {strengths.map((s) => (
-                            <div key={s.id} style={styles.snapItem}>
+                            <div key={s.id} style={styles.snapItemPositive}>
                               <div style={styles.snapItemTitle}>{s.strength_title}</div>
                               {s.why_its_strong ? (
                                 <div style={styles.snapItemDesc}>{s.why_its_strong}</div>
@@ -642,7 +642,7 @@ export default function Dashboard() {
                       ) : (
                         <div style={styles.snapItemList}>
                           {weaknesses.map((w) => (
-                            <div key={w.id} style={styles.snapItem}>
+                            <div key={w.id} style={styles.snapItemGap}>
                               <div style={styles.snapItemTitle}>{w.weakness_title}</div>
                               {w.divi_advantage ? (
                                 <div style={styles.snapItemDesc}>{w.divi_advantage}</div>
@@ -1828,12 +1828,20 @@ const styles = {
   snapItemList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 14,
+    gap: 12,
     marginTop: 10,
   },
-  snapItem: {
-    paddingBottom: 12,
-    borderBottom: '1px solid #242424',
+  snapItemPositive: {
+    background: '#0a0a0a',
+    padding: '14px 16px',
+    borderRadius: 8,
+    borderLeft: '3px solid #C523A1',
+  },
+  snapItemGap: {
+    background: '#0a0a0a',
+    padding: '14px 16px',
+    borderRadius: 8,
+    borderLeft: '3px solid #e74c3c',
   },
   snapItemTitle: {
     fontSize: '0.95em',
