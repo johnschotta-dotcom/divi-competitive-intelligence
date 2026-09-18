@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { displayCompetitorLabel, labelFromOverlapScore, tierFromCompetitorLabel } from '../lib/overlap';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://znusgttwjfuuzhycuvhs.supabase.co',
@@ -150,8 +151,32 @@ export default function Dashboard() {
     return n === 'divi' || w.includes('divi.fund');
   };
 
+  /** Score wins — label always matches overlap bands. */
+  const overlapMeta = (comp) => {
+    if (isDivi(comp) || comp?.tier === 'reference') {
+      return { score: 100, label: 'reference', tier: 'reference' };
+    }
+    const score = comp?.market_overlap_score ?? comp?.threat_score ?? null;
+    const label =
+      labelFromOverlapScore(score) ||
+      displayCompetitorLabel(comp) ||
+      comp?.true_competitor_label ||
+      null;
+    return {
+      score,
+      label,
+      tier: tierFromCompetitorLabel(label) || comp?.tier || 'monitor',
+    };
+  };
+
   const fetchCompetitors = async () => {
     setLoading(true);
+    try {
+      // Heal any score/label mismatches in Supabase (fast; no Claude crawl)
+      await fetch('/api/intelligence?alignOnly=1').catch(() => null);
+    } catch {
+      /* non-blocking */
+    }
     const { data } = await supabase
       .from('competitors')
       .select('*')
@@ -390,8 +415,14 @@ export default function Dashboard() {
       : [];
     const overlap =
       selected.market_overlap_score ?? comparison?.market_overlap_score ?? selected.threat_score;
-    const trueLabel =
-      selected.true_competitor_label || comparison?.true_competitor_label || selected.tier;
+    const meta = overlapMeta({
+      ...selected,
+      market_overlap_score: overlap,
+      true_competitor_label:
+        selected.true_competitor_label || comparison?.true_competitor_label || selected.tier,
+    });
+    const trueLabel = meta.label;
+    const tierForColor = meta.tier;
     const canExport = !!(
       comparison?.overall_verdict ||
       profile?.overall_summary ||
@@ -470,7 +501,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={styles.profileHeaderRight}>
-              <div style={styles.overlapBlock}>
+                  <div style={styles.overlapBlock}>
                 <div style={styles.overlapLabel}>
                   {isDivi(selected) || selected.tier === 'reference'
                     ? 'Reference score'
@@ -480,7 +511,7 @@ export default function Dashboard() {
                   <span
                     style={{
                       ...styles.overlapScore,
-                      color: getTierColor(selected.tier),
+                      color: getTierColor(tierForColor),
                     }}
                   >
                     {overlap ?? '—'}
@@ -490,12 +521,12 @@ export default function Dashboard() {
                 <div
                   style={{
                     ...styles.overlapBand,
-                    color: getTierColor(selected.tier),
+                    color: getTierColor(tierForColor),
                   }}
                 >
                   {isDivi(selected) || selected.tier === 'reference'
                     ? 'Gold standard'
-                    : (trueLabel || selected.tier || '—').replace(/_/g, ' ')}
+                    : (trueLabel || '—').replace(/_/g, ' ')}
                 </div>
                 <p style={styles.overlapNote}>
                   {isDivi(selected) || selected.tier === 'reference'
@@ -1219,11 +1250,7 @@ export default function Dashboard() {
         {!loading && (() => {
           const q = searchQuery.trim().toLowerCase();
           const filtered = competitors.filter((comp) => {
-            const label = String(
-              isDivi(comp) || comp.tier === 'reference'
-                ? 'reference'
-                : comp.true_competitor_label || ''
-            ).toLowerCase();
+            const label = String(overlapMeta(comp).label || '').toLowerCase();
             if (labelFilter !== 'all' && label !== labelFilter) return false;
             if (!q) return true;
             return String(comp.name || '')
@@ -1243,11 +1270,13 @@ export default function Dashboard() {
                 <p style={styles.loadingText}>No companies match these filters.</p>
               ) : (
                 <div style={styles.grid}>
-                  {filtered.map((comp) => (
+                  {filtered.map((comp) => {
+                    const meta = overlapMeta(comp);
+                    return (
                     <div
                       key={comp.id}
                       onClick={() => fetchDetails(comp)}
-                      style={{ ...styles.compCard, borderTopColor: getTierColor(comp.tier) }}
+                      style={{ ...styles.compCard, borderTopColor: getTierColor(meta.tier) }}
                     >
                       <div style={styles.compCardTop}>
                         <div
@@ -1267,12 +1296,10 @@ export default function Dashboard() {
                           />
                           <h3 style={{ ...styles.compCardTitle, margin: 0 }}>{comp.name}</h3>
                         </div>
-                        <span style={{ ...styles.compBadge, background: getTierColor(comp.tier) }}>
+                        <span style={{ ...styles.compBadge, background: getTierColor(meta.tier) }}>
                           {isDivi(comp) || comp.tier === 'reference'
                             ? 'OUR COMPANY'
-                            : (comp.true_competitor_label || comp.tier || 'monitor')
-                                .replace(/_/g, ' ')
-                                .toUpperCase()}
+                            : (meta.label || 'monitor').replace(/_/g, ' ').toUpperCase()}
                         </span>
                       </div>
                       {comp.tagline && <p style={styles.cardTagline}>{comp.tagline}</p>}
@@ -1282,10 +1309,10 @@ export default function Dashboard() {
                             style={{
                               fontSize: '2.2em',
                               fontWeight: 900,
-                              color: getTierColor(comp.tier),
+                              color: getTierColor(meta.tier),
                             }}
                           >
-                            {comp.market_overlap_score ?? comp.threat_score ?? '—'}
+                            {meta.score ?? '—'}
                           </div>
                           <div style={styles.scoreLabel}>Overlap w/ Divi</div>
                         </div>
@@ -1295,10 +1322,10 @@ export default function Dashboard() {
                               fontSize: '1.05em',
                               fontWeight: 800,
                               marginTop: 18,
-                              textTransform: 'uppercase',
+                              textTransform: 'capitalize',
                             }}
                           >
-                            {(comp.true_competitor_label || '—').replace(/_/g, ' ')}
+                            {(meta.label || '—').replace(/_/g, ' ')}
                           </div>
                           <div style={styles.scoreLabel}>True competitor?</div>
                         </div>
@@ -1306,7 +1333,8 @@ export default function Dashboard() {
                       <div style={styles.cardMeta}>Grounded in website claims</div>
                       <div style={styles.compCardFooter}>View positioning →</div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
