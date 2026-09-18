@@ -535,111 +535,127 @@ export default function Dashboard() {
           {detailLoading && <p style={styles.loadingText}>Loading profile…</p>}
 
           {!detailLoading && section === 'overview' && (
-            <>
-              <div style={styles.kpiGrid}>
-                <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>What they lead with</div>
-                  <div style={styles.kpiValueSmall}>{selected.tagline || profile?.primary_value_prop || '—'}</div>
+            <div style={styles.card}>
+              <div style={styles.snapLayout}>
+                <div>
+                  <h2 style={{ ...styles.cardTitle, marginBottom: 6 }}>Website snapshot</h2>
+                  <p style={styles.snapIntro}>
+                    What their site claims, who it speaks to, and what we crawled — grounded in live
+                    pages, not third-party databases.
+                  </p>
                 </div>
-                <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>Audience (from site)</div>
-                  <div style={styles.kpiValueSmall}>{profile?.target_audience || '—'}</div>
-                </div>
-                <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>Team on site</div>
-                  <div style={styles.kpiValue}>{founders.length || '—'}</div>
-                </div>
-                <div style={styles.kpiCard}>
-                  <div style={styles.kpiLabel}>Pages crawled</div>
-                  <div style={styles.kpiValue}>
-                    {media.filter((m) => m.source_name === 'crawled_page').length || '—'}
+
+                <div style={styles.snapStats}>
+                  <div style={styles.snapStat}>
+                    <div style={styles.snapStatLabel}>What they lead with</div>
+                    <div style={styles.snapStatText}>
+                      {selected.tagline || profile?.primary_value_prop || '—'}
+                    </div>
+                  </div>
+                  <div style={styles.snapStat}>
+                    <div style={styles.snapStatLabel}>Audience (from site)</div>
+                    <div style={styles.snapStatText}>{profile?.target_audience || '—'}</div>
+                  </div>
+                  <div style={styles.snapStat}>
+                    <div style={styles.snapStatLabel}>Team on site</div>
+                    <div style={styles.snapStatNum}>{founders.length || '—'}</div>
+                  </div>
+                  <div style={styles.snapStat}>
+                    <div style={styles.snapStatLabel}>Pages crawled</div>
+                    <div style={styles.snapStatNum}>
+                      {media.filter((m) => m.source_name === 'crawled_page').length || '—'}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={styles.card}>
-                <h2 style={styles.cardTitle}>Website snapshot</h2>
-                <p style={styles.overviewText}>
-                  {profile?.overall_summary || 'Re-analyze to populate from their live website.'}
-                </p>
-                {profile?.primary_value_prop && (
-                  <p style={styles.valueProp}>
-                    <strong>Value prop / meta:</strong> {profile.primary_value_prop}
+                <div style={styles.snapSection}>
+                  <div style={styles.snapSectionLabel}>Summary</div>
+                  <p style={styles.snapBody}>
+                    {profile?.overall_summary || 'Re-analyze to populate from their live website.'}
                   </p>
+                </div>
+
+                {profile?.primary_value_prop ? (
+                  <div style={styles.snapSection}>
+                    <div style={styles.snapSectionLabel}>Value prop / meta</div>
+                    <p style={styles.snapBody}>{profile.primary_value_prop}</p>
+                  </div>
+                ) : null}
+
+                {media.filter((m) => m.source_name === 'crawled_page').length > 0 ? (
+                  <div style={styles.snapSection}>
+                    <div style={styles.snapSectionLabel}>Pages we read</div>
+                    <div style={styles.snapLinkList}>
+                      {media
+                        .filter((m) => m.source_name === 'crawled_page')
+                        .map((m) => (
+                          <a
+                            key={m.id || m.title}
+                            href={m.url || m.title}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={styles.snapLink}
+                          >
+                            {m.title}
+                          </a>
+                        ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {media.filter((m) => m.source_name === 'website_heading').length > 0 ? (
+                  <div style={styles.snapSection}>
+                    <div style={styles.snapSectionLabel}>Headlines / sections on site</div>
+                    <ul style={styles.snapBulletList}>
+                      {media
+                        .filter((m) => m.source_name === 'website_heading')
+                        .map((m) => (
+                          <li key={m.id || m.title}>{m.title}</li>
+                        ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {(strengths.length > 0 || weaknesses.length > 0) && (
+                  <div style={styles.snapThemes}>
+                    <div style={styles.snapThemeCol}>
+                      <div style={styles.snapSectionLabel}>What their site sells well</div>
+                      {strengths.length === 0 ? (
+                        <p style={styles.snapEmpty}>—</p>
+                      ) : (
+                        <div style={styles.snapItemList}>
+                          {strengths.map((s) => (
+                            <div key={s.id} style={styles.snapItem}>
+                              <div style={styles.snapItemTitle}>{s.strength_title}</div>
+                              {s.why_its_strong ? (
+                                <div style={styles.snapItemDesc}>{s.why_its_strong}</div>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div style={styles.snapThemeCol}>
+                      <div style={styles.snapSectionLabel}>Gaps vs Divi’s site claims</div>
+                      {weaknesses.length === 0 ? (
+                        <p style={styles.snapEmpty}>—</p>
+                      ) : (
+                        <div style={styles.snapItemList}>
+                          {weaknesses.map((w) => (
+                            <div key={w.id} style={styles.snapItem}>
+                              <div style={styles.snapItemTitle}>{w.weakness_title}</div>
+                              {w.divi_advantage ? (
+                                <div style={styles.snapItemDesc}>{w.divi_advantage}</div>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {media.filter((m) => m.source_name === 'crawled_page').length > 0 && (
-                <div style={styles.card}>
-                  <h2 style={styles.cardTitle}>Pages we read</h2>
-                  <div style={styles.itemList}>
-                    {media
-                      .filter((m) => m.source_name === 'crawled_page')
-                      .map((m) => (
-                        <div key={m.id || m.title} style={styles.listItem}>
-                          <div>
-                            <a href={m.url || m.title} target="_blank" rel="noreferrer" style={styles.profileLink}>
-                              {m.title}
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {media.filter((m) => m.source_name === 'website_heading').length > 0 && (
-                <div style={styles.card}>
-                  <h2 style={styles.cardTitle}>Headlines / sections on site</h2>
-                  <ul style={styles.winList}>
-                    {media
-                      .filter((m) => m.source_name === 'website_heading')
-                      .map((m) => (
-                        <li key={m.id || m.title}>{m.title}</li>
-                      ))}
-                  </ul>
-                </div>
-              )}
-
-              {(strengths.length > 0 || weaknesses.length > 0) && (
-                <div style={styles.twoColumnGrid}>
-                  <div style={styles.card}>
-                    <h2 style={styles.cardTitle}>What their site sells well</h2>
-                    {strengths.length === 0 ? (
-                      <p style={styles.emptyState}>—</p>
-                    ) : (
-                      <div style={styles.itemList}>
-                        {strengths.map((s) => (
-                          <div key={s.id} style={styles.listItem}>
-                            <div>
-                              <div style={styles.listItemTitle}>{s.strength_title}</div>
-                              <div style={styles.listItemDesc}>{s.why_its_strong}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div style={styles.card}>
-                    <h2 style={styles.cardTitle}>Gaps vs Divi’s site claims</h2>
-                    {weaknesses.length === 0 ? (
-                      <p style={styles.emptyState}>—</p>
-                    ) : (
-                      <div style={styles.itemList}>
-                        {weaknesses.map((w) => (
-                          <div key={w.id} style={{ ...styles.listItem, borderLeft: '3px solid #e74c3c' }}>
-                            <div>
-                              <div style={styles.listItemTitle}>{w.weakness_title}</div>
-                              <div style={styles.listItemDesc}>{w.divi_advantage}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
+            </div>
           )}
 
           {!detailLoading && section === 'comparison' && (
@@ -1713,6 +1729,129 @@ const styles = {
     marginBottom: 20,
   },
   cardTitle: { margin: '0 0 18px', fontSize: '1.2em', fontWeight: 700 },
+  snapLayout: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 26,
+  },
+  snapIntro: {
+    margin: 0,
+    maxWidth: 560,
+    color: '#9a9a9a',
+    fontSize: '0.92em',
+    lineHeight: 1.45,
+  },
+  snapStats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+    gap: 12,
+  },
+  snapStat: {
+    background: '#141414',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    padding: '14px 16px',
+    minHeight: 88,
+  },
+  snapStatLabel: {
+    fontSize: '0.72em',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: '#888',
+    marginBottom: 10,
+  },
+  snapStatText: {
+    margin: 0,
+    fontSize: '0.95em',
+    fontWeight: 600,
+    lineHeight: 1.45,
+    color: '#e4e4e4',
+  },
+  snapStatNum: {
+    margin: 0,
+    fontSize: '1.65em',
+    fontWeight: 800,
+    lineHeight: 1.1,
+    letterSpacing: '-0.02em',
+    color: '#f0f0f0',
+  },
+  snapSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+  },
+  snapSectionLabel: {
+    fontSize: '0.72em',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: '#888',
+  },
+  snapBody: {
+    margin: 0,
+    fontSize: '1.02em',
+    lineHeight: 1.6,
+    color: '#d8d8d8',
+    maxWidth: 760,
+  },
+  snapLinkList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  snapLink: {
+    color: '#C523A1',
+    textDecoration: 'none',
+    fontSize: '0.92em',
+    lineHeight: 1.4,
+    wordBreak: 'break-all',
+  },
+  snapBulletList: {
+    margin: 0,
+    paddingLeft: 18,
+    color: '#d0d0d0',
+    fontSize: '0.95em',
+    lineHeight: 1.55,
+  },
+  snapThemes: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: 16,
+  },
+  snapThemeCol: {
+    background: '#141414',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    padding: '16px 18px',
+  },
+  snapItemList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+    marginTop: 10,
+  },
+  snapItem: {
+    paddingBottom: 12,
+    borderBottom: '1px solid #242424',
+  },
+  snapItemTitle: {
+    fontSize: '0.95em',
+    fontWeight: 650,
+    color: '#ececec',
+    marginBottom: 4,
+    lineHeight: 1.35,
+  },
+  snapItemDesc: {
+    fontSize: '0.88em',
+    lineHeight: 1.5,
+    color: '#9a9a9a',
+  },
+  snapEmpty: {
+    margin: '10px 0 0',
+    color: '#666',
+    fontSize: '0.92em',
+  },
   toneLayout: {
     display: 'flex',
     flexDirection: 'column',
