@@ -1007,8 +1007,8 @@ export default function Dashboard() {
         <div style={styles.dashHeader}>
           <div style={styles.dashHeaderTop}>
             <div style={styles.dashHeaderCopy}>
-              <div style={styles.breadcrumb}>COMPETITIVE LANDSCAPE</div>
-              <h1 style={styles.dashTitle}>Companies vs Divi</h1>
+              <h1 style={styles.dashTitle}>Competitive Landscape</h1>
+              <h2 style={styles.dashKicker}>Competitors vs. DIVI</h2>
               <p style={styles.dashSubtitle}>
                 Website and LinkedIn positioning — market overlap, where Divi wins or falls short,
                 and who is chasing the same customers.
@@ -1283,11 +1283,18 @@ const styles = {
     maxWidth: 720,
   },
   dashTitle: {
-    margin: '0 0 10px',
-    fontSize: '2.1em',
+    margin: '0 0 8px',
+    fontSize: '2.75em',
     fontWeight: 800,
-    letterSpacing: '-0.02em',
-    lineHeight: 1.15,
+    letterSpacing: '-0.03em',
+    lineHeight: 1.1,
+  },
+  dashKicker: {
+    margin: '0 0 12px',
+    fontSize: '1.15em',
+    fontWeight: 650,
+    color: '#C523A1',
+    letterSpacing: '-0.01em',
   },
   dashSubtitle: {
     margin: 0,
