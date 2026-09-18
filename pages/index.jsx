@@ -489,7 +489,7 @@ export default function Dashboard() {
                   : (trueLabel || selected.tier || 'monitor').replace(/_/g, ' ').toUpperCase()}
               </div>
               <div style={styles.estimateNote}>
-                Evidence: websites + LinkedIn only (not funding databases or press scrapes)
+                Evidence: company websites only (not funding databases or press scrapes)
               </div>
               {canExport ? (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -634,7 +634,7 @@ export default function Dashboard() {
           {!detailLoading && section === 'comparison' && (
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>
-                {isDivi(selected) ? 'Divi reference positioning' : `Website/LinkedIn: Divi vs ${selected.name}`}
+                {isDivi(selected) ? 'Divi reference positioning' : `Website positioning: Divi vs ${selected.name}`}
               </h2>
               {!comparison ? (
                 <p style={styles.emptyState}>
@@ -656,7 +656,7 @@ export default function Dashboard() {
                     <div style={styles.kpiCard}>
                       <div style={styles.kpiLabel}>Evidence</div>
                       <div style={styles.kpiValueSmall}>
-                        {comparison.evidence_basis || 'website + LinkedIn only'}
+                        {comparison.evidence_basis || 'company websites'}
                       </div>
                     </div>
                   </div>
@@ -1010,8 +1010,8 @@ export default function Dashboard() {
               <h1 style={styles.dashTitle}>Competitive Landscape</h1>
               <h2 style={styles.dashKicker}>Competitors vs. DIVI</h2>
               <p style={styles.dashSubtitle}>
-                Website and LinkedIn positioning — market overlap, where Divi wins or falls short,
-                and who is chasing the same customers.
+                Website positioning vs Divi — market overlap, where Divi wins or falls short, and who
+                is chasing the same customers.
               </p>
             </div>
             <div style={styles.dashCount}>
@@ -1160,7 +1160,7 @@ export default function Dashboard() {
                           <div style={styles.scoreLabel}>True competitor?</div>
                         </div>
                       </div>
-                      <div style={styles.cardMeta}>Grounded in website + LinkedIn claims</div>
+                      <div style={styles.cardMeta}>Grounded in website claims</div>
                       <div style={styles.compCardFooter}>View positioning →</div>
                     </div>
                   ))}
