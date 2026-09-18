@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { displayCompetitorLabel, labelFromOverlapScore, tierFromCompetitorLabel } from '../lib/overlap';
+import { alignedOverlap, displayCompetitorLabel, labelFromOverlapScore, tierFromCompetitorLabel } from '../lib/overlap';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://znusgttwjfuuzhycuvhs.supabase.co',
@@ -152,21 +152,19 @@ export default function Dashboard() {
     return n === 'divi' || w.includes('divi.fund');
   };
 
-  /** Score wins — label always matches overlap bands. */
+  /** Prefer stored not_a_competitor; otherwise score drives the band. */
   const overlapMeta = (comp) => {
     if (isDivi(comp) || comp?.tier === 'reference') {
       return { score: 100, label: 'reference', tier: 'reference' };
     }
-    const score = comp?.market_overlap_score ?? comp?.threat_score ?? null;
-    const label =
-      labelFromOverlapScore(score) ||
-      displayCompetitorLabel(comp) ||
-      comp?.true_competitor_label ||
-      null;
+    const aligned = alignedOverlap(
+      comp?.market_overlap_score ?? comp?.threat_score,
+      comp?.true_competitor_label
+    );
     return {
-      score,
-      label,
-      tier: tierFromCompetitorLabel(label) || comp?.tier || 'monitor',
+      score: aligned.score ?? comp?.market_overlap_score ?? comp?.threat_score ?? null,
+      label: aligned.label || comp?.true_competitor_label || null,
+      tier: tierFromCompetitorLabel(aligned.label) || comp?.tier || 'monitor',
     };
   };
 
@@ -260,6 +258,51 @@ export default function Dashboard() {
     await supabase.from('competitors').update({ status: 'deleted' }).eq('id', compId);
     setSelected(null);
     fetchCompetitors();
+  };
+
+  const markAsNotCompetitor = async (comp) => {
+    if (!comp?.id) return;
+    if (
+      !confirm(
+        `Mark ${comp.name} as not a competitor? This sets overlap to 10/100 and label to “not a competitor”.`
+      )
+    ) {
+      return;
+    }
+    const aligned = alignedOverlap(10, 'not_a_competitor');
+    await supabase
+      .from('competitors')
+      .update({
+        market_overlap_score: aligned.score,
+        true_competitor_label: aligned.label,
+        threat_score: aligned.score,
+        tier: tierFromCompetitorLabel(aligned.label),
+      })
+      .eq('id', comp.id);
+    await supabase
+      .from('divi_comparisons')
+      .update({
+        market_overlap_score: aligned.score,
+        true_competitor_label: aligned.label,
+      })
+      .eq('competitor_id', comp.id);
+
+    const updated = {
+      ...comp,
+      market_overlap_score: aligned.score,
+      true_competitor_label: aligned.label,
+      threat_score: aligned.score,
+      tier: tierFromCompetitorLabel(aligned.label),
+    };
+    setSelected(updated);
+    setCompetitors((prev) => prev.map((c) => (c.id === comp.id ? { ...c, ...updated } : c)));
+    if (comparison) {
+      setComparison({
+        ...comparison,
+        market_overlap_score: aligned.score,
+        true_competitor_label: aligned.label,
+      });
+    }
   };
 
   const runAnalysis = async (competitorId) => {
@@ -615,6 +658,15 @@ export default function Dashboard() {
               ) : (
                 <p style={styles.overlapNote}>Re-analyze to enable PDF / DOCX download.</p>
               )}
+              {!isDivi(selected) && selected.tier !== 'reference' && trueLabel !== 'not_a_competitor' ? (
+                <button
+                  type="button"
+                  onClick={() => markAsNotCompetitor(selected)}
+                  style={styles.ghostBtn}
+                >
+                  Mark as not a competitor
+                </button>
+              ) : null}
               <button onClick={() => deleteCompetitor(selected.id)} style={styles.deleteBtn}>
                 Delete
               </button>
@@ -1256,7 +1308,8 @@ export default function Dashboard() {
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>0–19 · Not a competitor</span>
                 <span style={styles.scoringDesc}>
-                  Clearly outside angel / portfolio operating software.
+                  Clearly outside angel / portfolio operating software (context-only companies). Use
+                  “Mark as not a competitor” on a profile if analysis over-scored them.
                 </span>
               </div>
             </div>
