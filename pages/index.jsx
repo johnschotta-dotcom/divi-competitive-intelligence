@@ -1667,17 +1667,6 @@ const styles = {
   tagline: { margin: '0 0 8px', opacity: 0.75 },
   profileLink: { color: '#C523A1', textDecoration: 'none' },
   metaRow: { display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12, opacity: 0.7, fontSize: '0.9em' },
-  statRow: { display: 'flex', gap: 24, justifyContent: 'flex-end', marginBottom: 12 },
-  statBlock: {},
-  statLabel: { fontSize: '0.8em', opacity: 0.6, textTransform: 'uppercase', fontWeight: 600 },
-  threatBadgeLarge: {
-    display: 'inline-block',
-    color: '#fff',
-    padding: '10px 16px',
-    borderRadius: 8,
-    fontWeight: 700,
-  },
-  estimateNote: { fontSize: '0.75em', opacity: 0.55, marginTop: 10, maxWidth: 260, marginLeft: 'auto' },
   sectionNav: {
     display: 'flex',
     gap: 8,
