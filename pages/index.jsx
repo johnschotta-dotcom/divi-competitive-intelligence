@@ -851,62 +851,72 @@ export default function Dashboard() {
 
           {!detailLoading && section === 'sentiment' && (
             <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Site tone</h2>
               {!sentiment ? (
-                <p style={styles.emptyState}>No site tone yet — re-analyze this competitor.</p>
-              ) : (
                 <>
-                  <p style={{ ...styles.estimateNote, marginBottom: 16 }}>
-                    Scores how clear and confident their <strong>website messaging</strong> is (value
-                    prop, specificity, crawlable depth) — not Twitter/social listening.
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 8 }}>
-                    <div
-                      style={{
-                        fontSize: '3.5em',
-                        fontWeight: 900,
-                        color: sentimentColor(sentiment.score),
-                      }}
-                    >
-                      {sentiment.score ?? '—'}
+                  <h2 style={styles.cardTitle}>Site tone</h2>
+                  <p style={styles.emptyState}>No site tone yet — re-analyze this competitor.</p>
+                </>
+              ) : (
+                <div style={styles.toneLayout}>
+                  <div style={styles.toneHeader}>
+                    <div>
+                      <h2 style={{ ...styles.cardTitle, marginBottom: 6 }}>Site tone</h2>
+                      <p style={styles.toneIntro}>
+                        Clarity and confidence of website messaging — not social listening.
+                      </p>
                     </div>
-                    <div style={{ opacity: 0.7 }}>/ 100</div>
-                    <div style={{ ...styles.kpiValueSmall, marginLeft: 8 }}>
-                      {(sentiment.score ?? 0) >= 80
-                        ? 'Strong'
-                        : (sentiment.score ?? 0) >= 60
-                          ? 'Solid'
-                          : (sentiment.score ?? 0) >= 40
-                            ? 'Mixed'
-                            : 'Weak / thin'}
+                    <div style={styles.toneScoreBlock}>
+                      <div style={styles.toneScoreRow}>
+                        <span
+                          style={{
+                            ...styles.toneScoreNum,
+                            color: sentimentColor(sentiment.score),
+                          }}
+                        >
+                          {sentiment.score ?? '—'}
+                        </span>
+                        <span style={styles.toneScoreDenom}>/100</span>
+                      </div>
+                      <div style={styles.toneBand}>
+                        {(sentiment.score ?? 0) >= 80
+                          ? 'Strong'
+                          : (sentiment.score ?? 0) >= 60
+                            ? 'Solid'
+                            : (sentiment.score ?? 0) >= 40
+                              ? 'Mixed'
+                              : 'Weak / thin'}
+                      </div>
+                      <div style={styles.toneScale}>
+                        80–100 strong · 60–79 solid · 40–59 mixed · 0–39 weak
+                      </div>
                     </div>
                   </div>
-                  <p style={{ ...styles.estimateNote, marginBottom: 16 }}>
-                    80–100 strong · 60–79 solid · 40–59 mixed · 0–39 weak/thin
-                  </p>
+
                   {sentiment.summary ? (
-                    <p style={styles.overviewText}>{sentiment.summary}</p>
+                    <p style={styles.toneSummary}>{sentiment.summary}</p>
                   ) : null}
+
                   {(sentiment.positive_themes || sentiment.negative_themes) && (
-                    <div style={styles.twoColumnGrid}>
+                    <div style={styles.toneThemes}>
                       {sentiment.positive_themes ? (
-                        <div>
-                          <div style={styles.kpiLabel}>What reads clearly</div>
-                          <p>{sentiment.positive_themes}</p>
+                        <div style={styles.toneThemeCol}>
+                          <div style={styles.toneThemeLabel}>What reads clearly</div>
+                          <p style={styles.toneThemeText}>{sentiment.positive_themes}</p>
                         </div>
                       ) : null}
                       {sentiment.negative_themes ? (
-                        <div>
-                          <div style={styles.kpiLabel}>Messaging gaps</div>
-                          <p>{sentiment.negative_themes}</p>
+                        <div style={styles.toneThemeCol}>
+                          <div style={styles.toneThemeLabel}>Messaging gaps</div>
+                          <p style={styles.toneThemeText}>{sentiment.negative_themes}</p>
                         </div>
                       ) : null}
                     </div>
                   )}
+
                   {sentiment.sample_sources ? (
-                    <p style={styles.estimateNote}>Source: {sentiment.sample_sources}</p>
+                    <p style={styles.toneSource}>Source: {sentiment.sample_sources}</p>
                   ) : null}
-                </>
+                </div>
               )}
             </div>
           )}
@@ -1668,6 +1678,97 @@ const styles = {
     marginBottom: 20,
   },
   cardTitle: { margin: '0 0 18px', fontSize: '1.2em', fontWeight: 700 },
+  toneLayout: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 22,
+  },
+  toneHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 28,
+    flexWrap: 'wrap',
+  },
+  toneIntro: {
+    margin: 0,
+    maxWidth: 420,
+    color: '#9a9a9a',
+    fontSize: '0.92em',
+    lineHeight: 1.45,
+  },
+  toneScoreBlock: {
+    textAlign: 'right',
+    minWidth: 160,
+  },
+  toneScoreRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  toneScoreNum: {
+    fontSize: '3.25em',
+    fontWeight: 800,
+    lineHeight: 1,
+    letterSpacing: '-0.03em',
+  },
+  toneScoreDenom: {
+    fontSize: '1em',
+    color: '#777',
+    fontWeight: 500,
+  },
+  toneBand: {
+    marginTop: 6,
+    fontSize: '0.95em',
+    fontWeight: 650,
+    color: '#e8e8e8',
+  },
+  toneScale: {
+    marginTop: 4,
+    fontSize: '0.75em',
+    color: '#777',
+    lineHeight: 1.35,
+  },
+  toneSummary: {
+    margin: 0,
+    fontSize: '1.05em',
+    lineHeight: 1.6,
+    color: '#d8d8d8',
+    maxWidth: 720,
+  },
+  toneThemes: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: 16,
+  },
+  toneThemeCol: {
+    background: '#141414',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    padding: '16px 18px',
+  },
+  toneThemeLabel: {
+    fontSize: '0.72em',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: '#888',
+    marginBottom: 10,
+  },
+  toneThemeText: {
+    margin: 0,
+    fontSize: '0.95em',
+    lineHeight: 1.55,
+    color: '#cfcfcf',
+  },
+  toneSource: {
+    margin: 0,
+    paddingTop: 4,
+    borderTop: '1px solid #2a2a2a',
+    fontSize: '0.78em',
+    color: '#666',
+  },
   overviewText: { fontSize: '1.02em', lineHeight: 1.6, margin: '0 0 12px' },
   valueProp: { margin: 0, opacity: 0.85 },
   scoreExplainer: { fontSize: '0.9em', opacity: 0.75, marginBottom: 18, fontStyle: 'italic' },
