@@ -1,12 +1,15 @@
 {
   "crons": [
     {
-      "path": "/api/intelligence?stale=1&limit=2",
+      "path": "/api/intelligence-cron",
       "schedule": "0 9 * * *"
     }
   ],
   "functions": {
     "pages/api/intelligence.js": {
+      "maxDuration": 300
+    },
+    "pages/api/intelligence-cron.js": {
       "maxDuration": 300
     },
     "pages/api/crawl-probe.js": {
