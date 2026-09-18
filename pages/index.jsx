@@ -470,30 +470,42 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={styles.profileHeaderRight}>
-              <div style={styles.statRow}>
-                <div style={styles.statBlock}>
-                  <div style={styles.statLabel}>Market overlap</div>
-                  <div style={{ fontSize: '2.6em', fontWeight: 900, color: getTierColor(selected.tier) }}>
+              <div style={styles.overlapBlock}>
+                <div style={styles.overlapLabel}>
+                  {isDivi(selected) || selected.tier === 'reference'
+                    ? 'Reference score'
+                    : 'Market overlap vs Divi'}
+                </div>
+                <div style={styles.overlapScoreRow}>
+                  <span
+                    style={{
+                      ...styles.overlapScore,
+                      color: getTierColor(selected.tier),
+                    }}
+                  >
                     {overlap ?? '—'}
-                  </div>
+                  </span>
+                  <span style={styles.overlapDenom}>/100</span>
                 </div>
-                <div style={styles.statBlock}>
-                  <div style={styles.statLabel}>True competitor?</div>
-                  <div style={{ fontSize: '1.1em', fontWeight: 800, marginTop: 10, textTransform: 'uppercase' }}>
-                    {(trueLabel || '—').replace(/_/g, ' ')}
-                  </div>
+                <div
+                  style={{
+                    ...styles.overlapBand,
+                    color: getTierColor(selected.tier),
+                  }}
+                >
+                  {isDivi(selected) || selected.tier === 'reference'
+                    ? 'Gold standard'
+                    : (trueLabel || selected.tier || '—').replace(/_/g, ' ')}
                 </div>
+                <p style={styles.overlapNote}>
+                  {isDivi(selected) || selected.tier === 'reference'
+                    ? 'Internal baseline — competitors are scored against this'
+                    : 'Job-to-be-done overlap from website evidence'}
+                </p>
               </div>
-              <div style={{ ...styles.threatBadgeLarge, background: getTierColor(selected.tier) }}>
-                {isDivi(selected) || selected.tier === 'reference'
-                  ? 'GOLD STANDARD'
-                  : (trueLabel || selected.tier || 'monitor').replace(/_/g, ' ').toUpperCase()}
-              </div>
-              <div style={styles.estimateNote}>
-                Evidence: company websites only (not funding databases or press scrapes)
-              </div>
+
               {canExport ? (
-                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                <div style={styles.profileActions}>
                   <button
                     onClick={() => exportProfile('pdf')}
                     style={styles.ghostBtn}
@@ -510,9 +522,7 @@ export default function Dashboard() {
                   </button>
                 </div>
               ) : (
-                <p style={{ ...styles.estimateNote, marginTop: 12 }}>
-                  Re-analyze to enable PDF / DOCX download.
-                </p>
+                <p style={styles.overlapNote}>Re-analyze to enable PDF / DOCX download.</p>
               )}
               <button onClick={() => deleteCompetitor(selected.id)} style={styles.deleteBtn}>
                 Delete
@@ -643,25 +653,6 @@ export default function Dashboard() {
                 </p>
               ) : (
                 <>
-                  <div style={styles.kpiGrid}>
-                    <div style={styles.kpiCard}>
-                      <div style={styles.kpiLabel}>Market overlap w/ Divi</div>
-                      <div style={styles.kpiValue}>{overlap ?? '—'}/100</div>
-                    </div>
-                    <div style={styles.kpiCard}>
-                      <div style={styles.kpiLabel}>True competitor label</div>
-                      <div style={styles.kpiValueSmall}>
-                        {(trueLabel || '—').replace(/_/g, ' ')}
-                      </div>
-                    </div>
-                    <div style={styles.kpiCard}>
-                      <div style={styles.kpiLabel}>Evidence</div>
-                      <div style={styles.kpiValueSmall}>
-                        {comparison.evidence_basis || 'company websites'}
-                      </div>
-                    </div>
-                  </div>
-
                   <p style={styles.overviewText}>{comparison.overall_verdict}</p>
 
                   <div style={styles.twoColumnGrid}>
@@ -1608,7 +1599,62 @@ const styles = {
     flexWrap: 'wrap',
   },
   profileHeaderLeft: { display: 'flex', gap: 20, alignItems: 'flex-start', flex: 1 },
-  profileHeaderRight: { textAlign: 'right', minWidth: 200 },
+  profileHeaderRight: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 14,
+    minWidth: 200,
+    textAlign: 'right',
+  },
+  overlapBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  overlapLabel: {
+    fontSize: '0.72em',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: '#888',
+  },
+  overlapScoreRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  overlapScore: {
+    fontSize: '3.1em',
+    fontWeight: 800,
+    lineHeight: 1,
+    letterSpacing: '-0.03em',
+  },
+  overlapDenom: {
+    fontSize: '1em',
+    color: '#777',
+    fontWeight: 500,
+  },
+  overlapBand: {
+    marginTop: 2,
+    fontSize: '1.05em',
+    fontWeight: 700,
+    textTransform: 'capitalize',
+  },
+  overlapNote: {
+    margin: '6px 0 0',
+    maxWidth: 240,
+    fontSize: '0.78em',
+    lineHeight: 1.4,
+    color: '#777',
+  },
+  profileActions: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
   companyLogo: { height: 88, objectFit: 'contain' },
   breadcrumb: {
     fontSize: '0.8em',
