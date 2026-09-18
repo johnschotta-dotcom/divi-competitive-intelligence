@@ -133,6 +133,7 @@ export default function Dashboard() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showScoringGuide, setShowScoringGuide] = useState(false);
   const [formData, setFormData] = useState({ name: '', website: '' });
   const [section, setSection] = useState('comparison');
   const [exporting, setExporting] = useState(false);
@@ -1006,6 +1007,20 @@ export default function Dashboard() {
           <div style={styles.navActions}>
             <button
               onClick={() => {
+                setShowScoringGuide((v) => !v);
+                setShowAddForm(false);
+              }}
+              style={{
+                ...styles.ghostBtn,
+                ...(showScoringGuide
+                  ? { background: 'rgba(197, 35, 161, 0.15)', borderColor: '#C523A1' }
+                  : {}),
+              }}
+            >
+              Scoring
+            </button>
+            <button
+              onClick={() => {
                 if (
                   !confirm(
                     'Full analysis can take several minutes and may time out on Vercel. Prefer opening one competitor and clicking Re-analyze. Continue with full run?'
@@ -1020,7 +1035,13 @@ export default function Dashboard() {
             >
               {analyzing ? 'Analyzing…' : 'Run full analysis'}
             </button>
-            <button onClick={() => setShowAddForm(true)} style={styles.addBtn}>
+            <button
+              onClick={() => {
+                setShowAddForm(true);
+                setShowScoringGuide(false);
+              }}
+              style={styles.addBtn}
+            >
               + Add competitor
             </button>
           </div>
@@ -1068,6 +1089,87 @@ export default function Dashboard() {
             </select>
           </div>
         </div>
+
+        {showScoringGuide && (
+          <div style={styles.formCard}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }}>
+              <h3 style={styles.formTitle}>Scoring guide</h3>
+              <button
+                type="button"
+                onClick={() => setShowScoringGuide(false)}
+                style={{ ...styles.ghostBtn, padding: '6px 12px', fontSize: 13 }}
+              >
+                Close
+              </button>
+            </div>
+            <p style={styles.scoringLead}>
+              Two separate scores. Overlap answers “are they chasing the same job as Divi?” Site tone
+              answers “how clear is their website messaging?”
+            </p>
+
+            <h4 style={styles.scoringH}>Market overlap (0–100)</h4>
+            <p style={styles.scoringBody}>
+              Claude scores how similar the competitor’s <strong>primary buyer job</strong> is to
+              Divi’s — especially angel/individual-investor portfolio tracking, monitoring, and
+              reporting. This is job-to-be-done overlap from website evidence, not a feature checklist.
+              Missing AI, syndicates, or education does not knock a portfolio-ops product out of
+              Direct; those gaps show up in the feature matrix instead.
+            </p>
+            <div style={styles.scoringTable}>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>80–100 · Direct</span>
+                <span style={styles.scoringDesc}>
+                  Same primary job as Divi (portfolio ops for angels / individual investors).
+                </span>
+              </div>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>50–79 · Adjacent</span>
+                <span style={styles.scoringDesc}>
+                  Investor software with a different primary job (GP fund admin, LP portals, CRM-only,
+                  banking, back-office).
+                </span>
+              </div>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>20–49 · Tangential</span>
+                <span style={styles.scoringDesc}>
+                  Shared audience only (deal marketplaces, content, communities) without portfolio ops
+                  as the core offer.
+                </span>
+              </div>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>0–19 · Not a competitor</span>
+                <span style={styles.scoringDesc}>
+                  Clearly outside angel / portfolio operating software.
+                </span>
+              </div>
+            </div>
+
+            <h4 style={styles.scoringH}>Site tone (0–100)</h4>
+            <p style={styles.scoringBody}>
+              Measures how <strong>clear and confident</strong> their website messaging is — value
+              prop, specificity, and crawlable depth. It is <em>not</em> Twitter/social sentiment.
+              Derived from title, meta, H1, multi-page depth, team visibility, and related site signals.
+            </p>
+            <div style={styles.scoringTable}>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>80–100</span>
+                <span style={styles.scoringDesc}>Strong, specific messaging</span>
+              </div>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>60–79</span>
+                <span style={styles.scoringDesc}>Solid but not fully sharp</span>
+              </div>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>40–59</span>
+                <span style={styles.scoringDesc}>Mixed or generic claims</span>
+              </div>
+              <div style={styles.scoringRow}>
+                <span style={styles.scoringRange}>0–39</span>
+                <span style={styles.scoringDesc}>Weak or thin crawlable messaging</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showAddForm && (
           <div style={styles.formCard}>
@@ -1389,6 +1491,50 @@ const styles = {
     marginBottom: 32,
   },
   formTitle: { margin: '0 0 16px', fontSize: '1.15em', fontWeight: 700 },
+  scoringLead: {
+    margin: '0 0 20px',
+    color: '#b0b0b0',
+    fontSize: '0.95em',
+    lineHeight: 1.5,
+  },
+  scoringH: {
+    margin: '0 0 8px',
+    fontSize: '1em',
+    fontWeight: 700,
+    color: '#f5f5f5',
+  },
+  scoringBody: {
+    margin: '0 0 14px',
+    color: '#b0b0b0',
+    fontSize: '0.92em',
+    lineHeight: 1.55,
+  },
+  scoringTable: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    marginBottom: 28,
+  },
+  scoringRow: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(140px, 200px) 1fr',
+    gap: 12,
+    alignItems: 'start',
+    padding: '10px 12px',
+    background: '#141414',
+    borderRadius: 8,
+    border: '1px solid #2a2a2a',
+  },
+  scoringRange: {
+    fontWeight: 650,
+    color: '#C523A1',
+    fontSize: '0.9em',
+  },
+  scoringDesc: {
+    color: '#c8c8c8',
+    fontSize: '0.9em',
+    lineHeight: 1.45,
+  },
   input: {
     width: '100%',
     padding: '12px 16px',
