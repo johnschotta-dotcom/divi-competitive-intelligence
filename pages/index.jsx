@@ -200,6 +200,9 @@ export default function Dashboard() {
     setSelected(comp);
     setSection(isDivi(comp) || comp.tier === 'reference' ? 'overview' : 'comparison');
     setDetailLoading(true);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
 
     const [p, s, w, rb, f, fr, h, sent, m, tech, cmp] = await Promise.all([
       supabase.from('competitor_profiles').select('*').eq('competitor_id', comp.id).maybeSingle(),
@@ -510,7 +513,15 @@ export default function Dashboard() {
               >
                 {analyzing ? 'Analyzing…' : 'Re-analyze'}
               </button>
-              <button onClick={() => setSelected(null)} style={styles.navButton}>
+              <button
+                onClick={() => {
+                  setSelected(null);
+                  if (typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+                  }
+                }}
+                style={styles.navButton}
+              >
                 ← Dashboard
               </button>
             </div>
