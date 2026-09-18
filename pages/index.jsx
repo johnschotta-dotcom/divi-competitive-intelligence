@@ -598,8 +598,8 @@ export default function Dashboard() {
               <div>
                 <div style={styles.breadcrumb}>
                   {isDivi(selected) || selected.tier === 'reference'
-                    ? 'Divi gold standard (our company)'
-                    : 'Competitive profile · scored vs Divi'}
+                    ? 'Divi gold standard'
+                    : 'Competitive profile'}
                 </div>
                 <h1 style={styles.profileTitle}>{selected.name}</h1>
                 {selected.tagline && <p style={styles.tagline}>{selected.tagline}</p>}
@@ -641,11 +641,6 @@ export default function Dashboard() {
                 >
                   {meta.labelDisplay}
                 </div>
-                <p style={styles.overlapNote}>
-                  {isDivi(selected) || selected.tier === 'reference'
-                    ? 'Internal baseline — competitors are scored against this'
-                    : 'High → Direct · Medium → Adjacent · Low → Tangential · None → Not a competitor'}
-                </p>
               </div>
 
               {canExport ? (
@@ -665,9 +660,7 @@ export default function Dashboard() {
                     Download DOCX
                   </button>
                 </div>
-              ) : (
-                <p style={styles.overlapNote}>Re-analyze to enable PDF / DOCX download.</p>
-              )}
+              ) : null}
               {!isDivi(selected) && selected.tier !== 'reference' && trueLabel !== 'not_a_competitor' ? (
                 <button
                   type="button"
@@ -690,13 +683,7 @@ export default function Dashboard() {
           {!detailLoading && section === 'overview' && (
             <div style={styles.card}>
               <div style={styles.snapLayout}>
-                <div>
-                  <h2 style={{ ...styles.cardTitle, marginBottom: 6 }}>Website snapshot</h2>
-                  <p style={styles.snapIntro}>
-                    What their site claims, who it speaks to, and what we crawled — grounded in live
-                    pages, not third-party databases.
-                  </p>
-                </div>
+                <h2 style={styles.cardTitle}>Website snapshot</h2>
 
                 <div style={styles.snapStats}>
                   <div style={styles.snapStat}>
@@ -706,7 +693,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div style={styles.snapStat}>
-                    <div style={styles.snapStatLabel}>Audience (from site)</div>
+                    <div style={styles.snapStatLabel}>Audience</div>
                     <div style={styles.snapStatText}>{profile?.target_audience || '—'}</div>
                   </div>
                   <div style={styles.snapStat}>
@@ -724,7 +711,7 @@ export default function Dashboard() {
                 <div style={styles.snapSection}>
                   <div style={styles.snapSectionLabel}>Summary</div>
                   <p style={styles.snapBody}>
-                    {profile?.overall_summary || 'Re-analyze to populate from their live website.'}
+                    {profile?.overall_summary || '—'}
                   </p>
                 </div>
 
@@ -818,7 +805,7 @@ export default function Dashboard() {
               </h2>
               {!comparison ? (
                 <p style={styles.emptyState}>
-                  No positioning yet — run Re-analyze (after supabase/03_positioning.sql if columns are missing).
+                  No positioning yet — run Re-analyze.
                 </p>
               ) : (
                 <>
@@ -915,15 +902,9 @@ export default function Dashboard() {
 
           {!detailLoading && section === 'founders' && (
             <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Team listed on website</h2>
-              <p style={{ opacity: 0.65, fontSize: 13, marginTop: 0, marginBottom: 16, lineHeight: 1.45 }}>
-                From team/about pages and JSON-LD. Prior roles parsed from bios; optional People Data
-                Labs enrichment when an API key is configured.
-              </p>
+              <h2 style={styles.cardTitle}>Team</h2>
               {founders.length === 0 ? (
-                <p style={styles.emptyState}>
-                  No team members extracted yet — re-analyze after deploy (team pages and JSON-LD Person markup are crawled).
-                </p>
+                <p style={styles.emptyState}>No team members listed yet.</p>
               ) : (
                 <div style={styles.founderGrid}>
                   {founders.map((f) => (
@@ -958,11 +939,6 @@ export default function Dashboard() {
                           </a>
                         )}
                       </div>
-                      {f.enrichment_source && (
-                        <div style={{ opacity: 0.55, fontSize: 11, marginTop: 8 }}>
-                          Source: {String(f.enrichment_source).replace(/_/g, ' ')}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1014,17 +990,12 @@ export default function Dashboard() {
               {!sentiment ? (
                 <>
                   <h2 style={styles.cardTitle}>Site tone</h2>
-                  <p style={styles.emptyState}>No site tone yet — re-analyze this competitor.</p>
+                  <p style={styles.emptyState}>No site tone yet.</p>
                 </>
               ) : (
                 <div style={styles.toneLayout}>
                   <div style={styles.toneHeader}>
-                    <div>
-                      <h2 style={{ ...styles.cardTitle, marginBottom: 6 }}>Site tone</h2>
-                      <p style={styles.toneIntro}>
-                        Clarity and confidence of website messaging — not social listening.
-                      </p>
-                    </div>
+                    <h2 style={{ ...styles.cardTitle, marginBottom: 0 }}>Site tone</h2>
                     <div style={styles.toneScoreBlock}>
                       <div style={styles.toneScoreRow}>
                         <span
@@ -1045,9 +1016,6 @@ export default function Dashboard() {
                             : (sentiment.score ?? 0) >= 40
                               ? 'Mixed'
                               : 'Weak / thin'}
-                      </div>
-                      <div style={styles.toneScale}>
-                        80–100 strong · 60–79 solid · 40–59 mixed · 0–39 weak
                       </div>
                     </div>
                   </div>
@@ -1072,10 +1040,6 @@ export default function Dashboard() {
                       ) : null}
                     </div>
                   )}
-
-                  {sentiment.sample_sources ? (
-                    <p style={styles.toneSource}>Source: {sentiment.sample_sources}</p>
-                  ) : null}
                 </div>
               )}
             </div>
@@ -1085,7 +1049,7 @@ export default function Dashboard() {
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Media coverage</h2>
               {media.length === 0 ? (
-                <p style={styles.emptyState}>No press mentions from Google News RSS / analysis</p>
+                <p style={styles.emptyState}>No press mentions</p>
               ) : (
                 <div style={styles.itemList}>
                   {media.map((m) => (
@@ -1254,10 +1218,6 @@ export default function Dashboard() {
             <div style={styles.dashHeaderCopy}>
               <h1 style={styles.dashTitle}>Competitive Landscape</h1>
               <h2 style={styles.dashKicker}>Competitors vs. Divi</h2>
-              <p style={styles.dashSubtitle}>
-                Website positioning vs Divi — market overlap, where Divi wins or falls short, and who
-                is chasing the same customers.
-              </p>
             </div>
             <div style={styles.dashCount}>
               <div style={styles.dashCountValue}>{competitors.length}</div>
@@ -1302,17 +1262,8 @@ export default function Dashboard() {
                 Close
               </button>
             </div>
-            <p style={styles.scoringLead}>
-              Two readings of the same judgment. Overlap level (High / Medium / Low / None) maps
-              directly to designation (Direct / Adjacent / Tangential / Not a competitor). Site tone
-              is separate — messaging clarity, not competitive overlap.
-            </p>
 
             <h4 style={styles.scoringH}>Market overlap</h4>
-            <p style={styles.scoringBody}>
-              Claude picks a qualitative overlap level from website evidence (primary buyer job vs
-              Divi). That level maps 1:1 to the competitor designation — no 0–100 score.
-            </p>
             <div style={styles.scoringTable}>
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>High → Direct</span>
@@ -1330,41 +1281,34 @@ export default function Dashboard() {
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>Low → Tangential</span>
                 <span style={styles.scoringDesc}>
-                  Shared audience only (deal marketplaces, content, communities) without portfolio ops
-                  as the core offer.
+                  Shared audience only (deal marketplaces, content, communities).
                 </span>
               </div>
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>None → Not a competitor</span>
                 <span style={styles.scoringDesc}>
-                  Outside angel / portfolio operating software (context-only). Use “Mark as not a
-                  competitor” on a profile if needed.
+                  Outside angel / portfolio operating software.
                 </span>
               </div>
             </div>
 
             <h4 style={styles.scoringH}>Site tone (0–100)</h4>
-            <p style={styles.scoringBody}>
-              Measures how <strong>clear and confident</strong> their website messaging is — value
-              prop, specificity, and crawlable depth. It is <em>not</em> Twitter/social sentiment.
-              Derived from title, meta, H1, multi-page depth, team visibility, and related site signals.
-            </p>
             <div style={styles.scoringTable}>
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>80–100</span>
-                <span style={styles.scoringDesc}>Strong, specific messaging</span>
+                <span style={styles.scoringDesc}>Strong messaging</span>
               </div>
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>60–79</span>
-                <span style={styles.scoringDesc}>Solid but not fully sharp</span>
+                <span style={styles.scoringDesc}>Solid</span>
               </div>
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>40–59</span>
-                <span style={styles.scoringDesc}>Mixed or generic claims</span>
+                <span style={styles.scoringDesc}>Mixed</span>
               </div>
               <div style={styles.scoringRow}>
                 <span style={styles.scoringRange}>0–39</span>
-                <span style={styles.scoringDesc}>Weak or thin crawlable messaging</span>
+                <span style={styles.scoringDesc}>Weak / thin</span>
               </div>
             </div>
           </div>
@@ -1482,7 +1426,6 @@ export default function Dashboard() {
                           <div style={styles.scoreLabel}>Designation</div>
                         </div>
                       </div>
-                      <div style={styles.cardMeta}>Grounded in website claims</div>
                       <div style={styles.compCardFooter}>View positioning →</div>
                     </div>
                     );
