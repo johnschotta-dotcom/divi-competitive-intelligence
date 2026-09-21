@@ -157,6 +157,13 @@ export default function Dashboard() {
     return n === 'divi' || w.includes('divi.fund');
   };
 
+  const isNewCompetitor = (comp) => {
+    if (!comp || isDivi(comp) || comp.tier === 'reference') return false;
+    return !comp.last_analyzed;
+  };
+
+  const NEW_COLOR = '#22c55e';
+
   /** High/medium/low/none → direct/adjacent/tangential/not a competitor */
   const overlapMeta = (comp) => {
     if (isDivi(comp) || comp?.tier === 'reference') {
@@ -201,6 +208,9 @@ export default function Dashboard() {
       const aRef = isDivi(a) || a.tier === 'reference' ? 1 : 0;
       const bRef = isDivi(b) || b.tier === 'reference' ? 1 : 0;
       if (aRef !== bRef) return bRef - aRef;
+      const aNew = isNewCompetitor(a) ? 1 : 0;
+      const bNew = isNewCompetitor(b) ? 1 : 0;
+      if (aNew !== bNew) return bNew - aNew;
       const aO = a.market_overlap_score ?? a.threat_score ?? 0;
       const bO = b.market_overlap_score ?? b.threat_score ?? 0;
       return bO - aO;
@@ -243,6 +253,17 @@ export default function Dashboard() {
     setTechStack(tech.data || []);
     setComparison(cmp.data);
     setDetailLoading(false);
+  };
+
+  const openCompetitor = async (comp) => {
+    await fetchDetails(comp);
+    if (!isNewCompetitor(comp) || analyzing) return;
+    const shouldAnalyze = window.confirm(
+      `${comp.name} hasn’t been analyzed yet. Analyze now?`
+    );
+    if (shouldAnalyze) {
+      await runAnalysis(comp.id);
+    }
   };
 
   const addCompetitor = async () => {
@@ -533,6 +554,7 @@ export default function Dashboard() {
     });
     const trueLabel = meta.label;
     const tierForColor = meta.tier;
+    const isNew = isNewCompetitor(selected);
     const canExport = !!(
       comparison?.overall_verdict ||
       profile?.overall_summary ||
@@ -566,10 +588,18 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => runAnalysis(selected.id)}
-                style={styles.ghostBtn}
+                style={
+                  isNew
+                    ? {
+                        ...styles.ghostBtn,
+                        borderColor: NEW_COLOR,
+                        color: NEW_COLOR,
+                      }
+                    : styles.ghostBtn
+                }
                 disabled={analyzing}
               >
-                {analyzing ? 'Analyzing…' : 'Re-analyze'}
+                {analyzing ? 'Analyzing…' : isNew ? 'Analyze' : 'Re-analyze'}
               </button>
               <button
                 onClick={() => {
@@ -599,9 +629,24 @@ export default function Dashboard() {
                 <div style={styles.breadcrumb}>
                   {isDivi(selected) || selected.tier === 'reference'
                     ? 'Divi gold standard'
-                    : 'Competitive profile'}
+                    : isNew
+                      ? 'New — not analyzed yet'
+                      : 'Competitive profile'}
                 </div>
-                <h1 style={styles.profileTitle}>{selected.name}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h1 style={{ ...styles.profileTitle, margin: 0 }}>{selected.name}</h1>
+                  {isNew ? (
+                    <span
+                      style={{
+                        ...styles.compBadge,
+                        background: NEW_COLOR,
+                        fontSize: '0.7em',
+                      }}
+                    >
+                      NEW
+                    </span>
+                  ) : null}
+                </div>
                 {selected.tagline && <p style={styles.tagline}>{selected.tagline}</p>}
                 <a
                   href={selected.website}
@@ -623,27 +668,42 @@ export default function Dashboard() {
                 <div style={styles.overlapLabel}>
                   {isDivi(selected) || selected.tier === 'reference'
                     ? 'Reference overlap'
-                    : 'Market overlap vs Divi'}
+                    : isNew
+                      ? 'Status'
+                      : 'Market overlap vs Divi'}
                 </div>
                 <div
                   style={{
                     ...styles.overlapLevel,
-                    color: getTierColor(tierForColor),
+                    color: isNew ? NEW_COLOR : getTierColor(tierForColor),
                   }}
                 >
-                  {meta.levelDisplay}
+                  {isNew ? 'NEW' : meta.levelDisplay}
                 </div>
                 <div
                   style={{
                     ...styles.overlapBand,
-                    color: getTierColor(tierForColor),
+                    color: isNew ? NEW_COLOR : getTierColor(tierForColor),
                   }}
                 >
-                  {meta.labelDisplay}
+                  {isNew ? 'Not analyzed' : meta.labelDisplay}
                 </div>
               </div>
 
-              {canExport ? (
+              {isNew ? (
+                <div style={styles.profileActions}>
+                  <button
+                    onClick={() => runAnalysis(selected.id)}
+                    style={{
+                      ...styles.addBtn,
+                      background: NEW_COLOR,
+                    }}
+                    disabled={analyzing}
+                  >
+                    {analyzing ? 'Analyzing…' : 'Analyze now'}
+                  </button>
+                </div>
+              ) : canExport ? (
                 <div style={styles.profileActions}>
                   <button
                     onClick={() => exportProfile('pdf')}
@@ -661,7 +721,10 @@ export default function Dashboard() {
                   </button>
                 </div>
               ) : null}
-              {!isDivi(selected) && selected.tier !== 'reference' && trueLabel !== 'not_a_competitor' ? (
+              {!isNew &&
+              !isDivi(selected) &&
+              selected.tier !== 'reference' &&
+              trueLabel !== 'not_a_competitor' ? (
                 <button
                   type="button"
                   onClick={() => markAsNotCompetitor(selected)}
@@ -675,6 +738,40 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
+
+          {isNew && !detailLoading ? (
+            <div
+              style={{
+                marginBottom: 20,
+                padding: '14px 18px',
+                borderRadius: 10,
+                background: 'rgba(34, 197, 94, 0.12)',
+                border: '1px solid rgba(34, 197, 94, 0.35)',
+                color: '#166534',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              <span>
+                <strong style={{ color: NEW_COLOR }}>NEW</strong> — {selected.name} hasn’t been
+                analyzed yet. Run analysis to build its competitive profile.
+              </span>
+              <button
+                onClick={() => runAnalysis(selected.id)}
+                style={{
+                  ...styles.addBtn,
+                  background: NEW_COLOR,
+                  whiteSpace: 'nowrap',
+                }}
+                disabled={analyzing}
+              >
+                {analyzing ? 'Analyzing…' : 'Analyze now'}
+              </button>
+            </div>
+          ) : null}
 
           <SectionNav />
 
@@ -1367,11 +1464,22 @@ export default function Dashboard() {
                 <div style={styles.grid}>
                   {filtered.map((comp) => {
                     const meta = overlapMeta(comp);
+                    const isNew = isNewCompetitor(comp);
+                    const accent = isNew ? NEW_COLOR : getTierColor(meta.tier);
                     return (
                     <div
                       key={comp.id}
-                      onClick={() => fetchDetails(comp)}
-                      style={{ ...styles.compCard, borderTopColor: getTierColor(meta.tier) }}
+                      onClick={() => openCompetitor(comp)}
+                      style={{
+                        ...styles.compCard,
+                        borderTopColor: accent,
+                        ...(isNew
+                          ? {
+                              borderColor: 'rgba(34, 197, 94, 0.45)',
+                              boxShadow: '0 0 0 1px rgba(34, 197, 94, 0.2)',
+                            }
+                          : {}),
+                      }}
                     >
                       <div style={styles.compCardTop}>
                         <div
@@ -1391,10 +1499,12 @@ export default function Dashboard() {
                           />
                           <h3 style={{ ...styles.compCardTitle, margin: 0 }}>{comp.name}</h3>
                         </div>
-                        <span style={{ ...styles.compBadge, background: getTierColor(meta.tier) }}>
+                        <span style={{ ...styles.compBadge, background: accent }}>
                           {isDivi(comp) || comp.tier === 'reference'
                             ? 'OUR COMPANY'
-                            : meta.levelDisplay.toUpperCase()}
+                            : isNew
+                              ? 'NEW'
+                              : meta.levelDisplay.toUpperCase()}
                         </span>
                       </div>
                       {comp.tagline && <p style={styles.cardTagline}>{comp.tagline}</p>}
@@ -1404,11 +1514,11 @@ export default function Dashboard() {
                             style={{
                               fontSize: '1.55em',
                               fontWeight: 800,
-                              color: getTierColor(meta.tier),
+                              color: accent,
                               letterSpacing: '-0.02em',
                             }}
                           >
-                            {meta.levelDisplay}
+                            {isNew ? '—' : meta.levelDisplay}
                           </div>
                           <div style={styles.scoreLabel}>Overlap</div>
                         </div>
@@ -1419,14 +1529,27 @@ export default function Dashboard() {
                               fontWeight: 700,
                               marginTop: 8,
                               textTransform: 'none',
+                              color: isNew ? NEW_COLOR : undefined,
                             }}
                           >
-                            {meta.labelDisplay}
+                            {isNew ? 'New' : meta.labelDisplay}
                           </div>
                           <div style={styles.scoreLabel}>Designation</div>
                         </div>
                       </div>
-                      <div style={styles.compCardFooter}>View positioning →</div>
+                      <div
+                        style={{
+                          ...styles.compCardFooter,
+                          ...(isNew
+                            ? {
+                                background: 'rgba(34, 197, 94, 0.14)',
+                                color: NEW_COLOR,
+                              }
+                            : {}),
+                        }}
+                      >
+                        {isNew ? 'Analyze →' : 'View positioning →'}
+                      </div>
                     </div>
                     );
                   })}
