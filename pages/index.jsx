@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import {
   resolveOverlap,
@@ -570,6 +571,9 @@ export default function Dashboard() {
               <span>Divi Intelligence</span>
             </div>
             <div style={styles.navActions}>
+              <Link href="/positioning" style={styles.ghostBtn}>
+                Market positioning
+              </Link>
               <button
                 onClick={() => exportProfile('pdf')}
                 style={styles.ghostBtn}
@@ -1236,6 +1240,9 @@ export default function Dashboard() {
             <span>Divi Intelligence</span>
           </div>
           <div style={styles.navActions}>
+            <Link href="/positioning" style={styles.ghostBtn}>
+              Market positioning
+            </Link>
             <button
               onClick={() => {
                 setShowScoringGuide((v) => !v);
@@ -1315,6 +1322,13 @@ export default function Dashboard() {
             <div style={styles.dashHeaderCopy}>
               <h1 style={styles.dashTitle}>Competitive Landscape</h1>
               <h2 style={styles.dashKicker}>Competitors vs. Divi</h2>
+              <p style={styles.dashSubtitle}>
+                <Link href="/positioning" style={{ color: '#C523A1' }}>
+                  Market positioning
+                </Link>{' '}
+                rolls overlapping analyses into what we do well, where we lag, and how to
+                separate.
+              </p>
             </div>
             <div style={styles.dashCount}>
               <div style={styles.dashCountValue}>{competitors.length}</div>
@@ -1632,6 +1646,9 @@ const styles = {
     borderRadius: 8,
     cursor: 'pointer',
     fontWeight: 600,
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
   },
   addBtn: {
     background: '#C523A1',
