@@ -39,23 +39,63 @@ function SourceChips({ sources }) {
   );
 }
 
-function InsightList({ items, empty }) {
-  if (!items?.length) {
-    return <p style={styles.empty}>{empty}</p>;
-  }
+function splitCrossover(items) {
+  const list = items || [];
+  return {
+    shared: list.filter((item) => item.crossover),
+    unique: list.filter((item) => !item.crossover),
+  };
+}
+
+function ThemeRows({ items }) {
+  if (!items?.length) return null;
   return (
     <div style={styles.insightList}>
       {items.map((item) => (
-        <div key={item.text} style={styles.insightCard}>
-          <div style={styles.insightText}>{item.text}</div>
-          <div style={styles.insightMeta}>
-            Mentioned in {item.sources.length}{' '}
-            {item.sources.length === 1 ? 'analysis' : 'analyses'}
-          </div>
+        <div key={item.id || item.title} style={styles.insightCard}>
+          <div style={styles.insightTitle}>{item.title}</div>
+          <div style={styles.insightText}>{item.summary}</div>
+          {item.extras?.length ? (
+            <ul style={styles.extraList}>
+              {item.extras.map((extra) => (
+                <li key={extra}>{extra}</li>
+              ))}
+            </ul>
+          ) : null}
           <SourceChips sources={item.sources} />
         </div>
       ))}
     </div>
+  );
+}
+
+function UniqueRows({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div style={styles.uniqueWrap}>
+      <div style={styles.uniqueLabel}>Only in one analysis</div>
+      <div style={styles.uniqueList}>
+        {items.map((item) => (
+          <div key={item.id || item.summary} style={styles.uniqueRow}>
+            <span style={styles.uniqueText}>{item.summary}</span>
+            <SourceChips sources={item.sources} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ThemeSection({ title, hint, items, empty, color }) {
+  const { shared, unique } = splitCrossover(items);
+  return (
+    <section style={{ ...styles.panel, borderColor: color || '#2d2d2d' }}>
+      <h2 style={styles.panelTitle}>{title}</h2>
+      <p style={styles.panelHint}>{hint}</p>
+      {!shared.length && !unique.length ? <p style={styles.empty}>{empty}</p> : null}
+      <ThemeRows items={shared} />
+      <UniqueRows items={unique} />
+    </section>
   );
 }
 
@@ -114,6 +154,7 @@ export default function PositioningPage() {
   };
 
   const counts = raw?.counts || { total: 0, direct: 0, adjacent: 0, tangential: 0 };
+  const visibleCompanies = insights?.companies || [];
 
   return (
     <div style={styles.container}>
@@ -137,8 +178,8 @@ export default function PositioningPage() {
             <div style={styles.kicker}>Market brief</div>
             <h1 style={styles.title}>Where Divi stands</h1>
             <p style={styles.lede}>
-              Synthesized from analyzed Direct, Adjacent, and Tangential companies.
-              Profiles with no overlap are left out.
+              One condensed brief from overlapping analyses. Company names are source
+              tags, not separate recaps. No-overlap profiles are excluded.
             </p>
           </div>
           <div style={styles.countCard}>
@@ -179,79 +220,58 @@ export default function PositioningPage() {
 
         {!loading && insights && counts.total > 0 ? (
           <>
-            <div style={styles.grid}>
-              <section style={{ ...styles.panel, borderColor: '#22c55e' }}>
-                <h2 style={styles.panelTitle}>What Divi does well</h2>
-                <p style={styles.panelHint}>
-                  Repeated Divi wins and competitor gaps across overlapping analyses.
-                </p>
-                <InsightList
-                  items={insights.whatWeDoWell}
-                  empty="No repeated Divi strengths in the selected designations."
-                />
-              </section>
+            <section style={styles.overview}>
+              <h2 style={styles.panelTitle}>Crossover summary</h2>
+              <p style={styles.overviewText}>{insights.overview}</p>
+              <SourceChips sources={visibleCompanies} />
+            </section>
 
-              <section style={{ ...styles.panel, borderColor: '#f39c12' }}>
-                <h2 style={styles.panelTitle}>Where we’re behind</h2>
-                <p style={styles.panelHint}>
-                  Places overlapping companies out-claim or out-deliver Divi on their sites.
-                </p>
-                <InsightList
-                  items={insights.whereWeLag}
-                  empty="No repeated gaps in the selected designations."
-                />
-              </section>
+            <div style={styles.grid}>
+              <ThemeSection
+                title="What Divi does well"
+                color="#22c55e"
+                hint="Repeated Divi edges. Shared themes first; one-off points stay tagged below."
+                items={insights.whatWeDoWell}
+                empty="No Divi strengths in the selected designations."
+              />
+              <ThemeSection
+                title="Where we’re behind"
+                color="#f39c12"
+                hint="Places overlapping companies out-claim Divi. Shared gaps first."
+                items={insights.whereWeLag}
+                empty="No gaps in the selected designations."
+              />
             </div>
 
-            <section style={{ ...styles.panel, borderColor: '#9b59b6', marginTop: 22 }}>
-              <h2 style={styles.panelTitle}>How to separate ourselves</h2>
-              <p style={styles.panelHint}>
-                Differentiators others lead with — counter them for Direct competitors, and
-                borrow the useful ones from Adjacent and Tangential companies.
-              </p>
-              <InsightList
+            <div style={{ ...styles.grid, marginTop: 22 }}>
+              <ThemeSection
+                title="How to separate ourselves"
+                color="#9b59b6"
+                hint="Counter Direct plays; borrow useful Adjacent and Tangential ones."
                 items={insights.howToSeparate}
-                empty="No differentiation themes in the selected designations."
+                empty="No separation themes in the selected designations."
               />
-              {insights.recommendations.length ? (
-                <div style={styles.recoWrap}>
-                  <h3 style={styles.subhead}>What analyses recommended</h3>
-                  <div style={styles.recoList}>
-                    {insights.recommendations.map((row) => (
-                      <div key={`${row.source.id}-${row.text.slice(0, 40)}`} style={styles.recoCard}>
-                        <div style={styles.recoCompany}>
-                          <span
-                            style={{
-                              ...styles.chip,
-                              borderColor: DESIGNATION_COLORS[row.source.label],
-                              color: DESIGNATION_COLORS[row.source.label],
-                            }}
-                          >
-                            {row.source.name} · {row.source.labelDisplay}
-                          </span>
-                        </div>
-                        <p style={styles.recoText}>{row.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </section>
+              <ThemeSection
+                title="Notes from the market"
+                hint="Strengths and shared ground not already covered above."
+                items={insights.notesToTake}
+                empty="No additional market notes in the selected designations."
+              />
+            </div>
 
             {insights.capabilities.length ? (
               <section style={{ ...styles.panel, marginTop: 22 }}>
-                <h2 style={styles.panelTitle}>Capability scoreboard</h2>
+                <h2 style={styles.panelTitle}>Capability edges</h2>
                 <p style={styles.panelHint}>
-                  Website claim edges across the selected overlapping companies.
+                  Where website claims split. Ties are omitted.
                 </p>
                 <div style={styles.tableWrap}>
                   <table style={styles.table}>
                     <thead>
                       <tr>
                         <th style={styles.th}>Capability</th>
-                        <th style={styles.th}>Divi edge</th>
-                        <th style={styles.th}>They edge</th>
-                        <th style={styles.th}>Tie / unclear</th>
+                        <th style={styles.th}>Divi</th>
+                        <th style={styles.th}>Them</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -262,7 +282,6 @@ export default function PositioningPage() {
                           <td style={{ ...styles.td, color: '#f39c12', fontWeight: 700 }}>
                             {row.competitor}
                           </td>
-                          <td style={styles.td}>{row.tie}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -270,50 +289,6 @@ export default function PositioningPage() {
                 </div>
               </section>
             ) : null}
-
-            <section style={{ ...styles.panel, marginTop: 22 }}>
-              <h2 style={styles.panelTitle}>Notes to take from the market</h2>
-              <p style={styles.panelHint}>
-                Strengths and unique plays from overlapping companies. Direct is what we must
-                answer; Adjacent and Tangential are ideas worth stealing.
-              </p>
-              <InsightList
-                items={insights.notesToTake}
-                empty="No market notes in the selected designations."
-              />
-            </section>
-
-            <section style={{ marginTop: 22 }}>
-              <h2 style={styles.panelTitle}>Companies in this brief</h2>
-              <div style={styles.companyGrid}>
-                {insights.companies.map((comp) => (
-                  <div key={comp.id} style={styles.companyCard}>
-                    <div style={styles.companyTop}>
-                      <strong>{comp.name}</strong>
-                      <span
-                        style={{
-                          ...styles.badge,
-                          background: DESIGNATION_COLORS[comp.label] || '#444',
-                        }}
-                      >
-                        {comp.labelDisplay}
-                      </span>
-                    </div>
-                    {comp.tagline ? <p style={styles.companyTagline}>{comp.tagline}</p> : null}
-                    {comp.website ? (
-                      <a
-                        href={comp.website}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={styles.companyLink}
-                      >
-                        {comp.website.replace(/^https?:\/\//, '')}
-                      </a>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </section>
           </>
         ) : null}
       </div>
@@ -420,6 +395,14 @@ const styles = {
     alignItems: 'center',
     fontWeight: 600,
   },
+  overview: {
+    background: '#1a1a1a',
+    border: '1px solid rgba(197,35,161,0.35)',
+    borderRadius: 14,
+    padding: 22,
+    marginBottom: 22,
+  },
+  overviewText: { margin: '8px 0 14px', lineHeight: 1.65, fontSize: '1.05em' },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
@@ -440,8 +423,42 @@ const styles = {
     padding: 14,
     border: '1px solid #222',
   },
+  insightTitle: {
+    fontWeight: 700,
+    marginBottom: 6,
+    color: '#C523A1',
+    fontSize: '0.92em',
+  },
   insightText: { lineHeight: 1.5, marginBottom: 8 },
-  insightMeta: { fontSize: '0.78em', color: '#888', marginBottom: 8 },
+  extraList: {
+    margin: '0 0 10px',
+    paddingLeft: 18,
+    color: '#b0b0b0',
+    fontSize: '0.9em',
+    lineHeight: 1.45,
+  },
+  uniqueWrap: { marginTop: 16 },
+  uniqueLabel: {
+    fontSize: '0.75em',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: '#888',
+    fontWeight: 700,
+    marginBottom: 8,
+  },
+  uniqueList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  uniqueRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 10,
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    background: '#0a0a0a',
+    borderRadius: 8,
+    padding: '10px 12px',
+    border: '1px solid #1f1f1f',
+  },
+  uniqueText: { flex: '1 1 220px', lineHeight: 1.45, fontSize: '0.92em', color: '#d0d0d0' },
   chipRow: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   chip: {
     border: '1px solid #444',
@@ -450,17 +467,6 @@ const styles = {
     fontSize: '0.72em',
     fontWeight: 700,
   },
-  recoWrap: { marginTop: 22 },
-  subhead: { margin: '0 0 12px', fontSize: '1em', color: '#C523A1' },
-  recoList: { display: 'flex', flexDirection: 'column', gap: 12 },
-  recoCard: {
-    background: 'rgba(197,35,161,0.08)',
-    border: '1px solid rgba(197,35,161,0.28)',
-    borderRadius: 10,
-    padding: 14,
-  },
-  recoCompany: { marginBottom: 8 },
-  recoText: { margin: 0, lineHeight: 1.55 },
   tableWrap: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.92em' },
   th: {
@@ -472,35 +478,6 @@ const styles = {
     textTransform: 'uppercase',
   },
   td: { padding: '12px 8px', borderBottom: '1px solid #222', verticalAlign: 'top' },
-  companyGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: 12,
-    marginTop: 12,
-  },
-  companyCard: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
-    borderRadius: 12,
-    padding: 16,
-  },
-  companyTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 8,
-    alignItems: 'center',
-  },
-  badge: {
-    color: '#fff',
-    borderRadius: 999,
-    padding: '4px 8px',
-    fontSize: '0.68em',
-    fontWeight: 800,
-    letterSpacing: '0.04em',
-    textTransform: 'uppercase',
-  },
-  companyTagline: { margin: '8px 0 0', color: '#a8a8a8', fontSize: '0.9em', lineHeight: 1.4 },
-  companyLink: { display: 'inline-block', marginTop: 8, color: '#C523A1', fontSize: '0.82em' },
   empty: { opacity: 0.65, fontStyle: 'italic' },
   emptyCard: {
     background: '#1a1a1a',
