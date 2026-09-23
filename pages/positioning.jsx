@@ -19,7 +19,22 @@ const FILTERS = [
   { id: 'tangential', label: 'Tangential' },
 ];
 
-function ThemeRows({ items, showPriority = false }) {
+function formatAnalysisDate(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function creditLine(count, latestAnalyzedAt) {
+  const informed = `Informed by ${count} ${count === 1 ? 'analysis' : 'analyses'}`;
+  const asOf = formatAnalysisDate(latestAnalyzedAt);
+  return asOf ? `${informed} · Updated ${asOf}` : informed;
+}
   if (!items?.length) return null;
   return (
     <div style={styles.insightList}>
@@ -40,8 +55,7 @@ function ThemeRows({ items, showPriority = false }) {
           </div>
           <div style={styles.insightText}>{item.summary}</div>
           <div style={styles.insightMeta}>
-            Informed by {item.sources.length}{' '}
-            {item.sources.length === 1 ? 'analysis' : 'analyses'}
+            {creditLine(item.sources.length)}
           </div>
         </div>
       ))}
@@ -68,9 +82,11 @@ export default function PositioningPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError('');
+    const load = async ({ silent = false } = {}) => {
+      if (!silent) {
+        setLoading(true);
+        setError('');
+      }
       try {
         const [comps, comparisons, strengths, weaknesses] = await Promise.all([
           supabase.from('competitors').select('*').eq('status', 'active'),
@@ -90,15 +106,24 @@ export default function PositioningPage() {
             weaknesses: weaknesses.data || [],
           })
         );
+        setError('');
       } catch (err) {
-        if (!cancelled) setError(err.message || 'Could not load positioning');
+        if (!cancelled && !silent) setError(err.message || 'Could not load positioning');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !silent) setLoading(false);
       }
     };
     load();
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      load({ silent: true });
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
     };
   }, []);
 
@@ -138,9 +163,9 @@ export default function PositioningPage() {
             <div style={styles.kicker}>Market brief</div>
             <h1 style={styles.title}>Where Divi stands</h1>
             <p style={styles.lede}>
-              Original summary of overlapping analyses: what Divi does best, where
-              competitors consistently outpace us, and what to do next. No-overlap
-              profiles are excluded.
+              This brief rebuilds from current overlapping analyses. Add a company and
+              analyze it — if it has overlap, strengths, gaps, and next steps will shift.
+              No-overlap profiles stay out.
             </p>
           </div>
           <div style={styles.countCard}>
@@ -185,8 +210,7 @@ export default function PositioningPage() {
               <h2 style={styles.panelTitle}>Summary</h2>
               <p style={styles.overviewText}>{insights.overview}</p>
               <div style={styles.insightMeta}>
-                Informed by {insights.companies.length}{' '}
-                {insights.companies.length === 1 ? 'analysis' : 'analyses'}
+                {creditLine(insights.companies.length, insights.latestAnalyzedAt)}
               </div>
             </section>
 

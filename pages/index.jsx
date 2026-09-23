@@ -1326,8 +1326,8 @@ export default function Dashboard() {
                 <Link href="/positioning" style={{ color: '#C523A1' }}>
                   Market positioning
                 </Link>{' '}
-                rolls overlapping analyses into what we do well, where we lag, and how to
-                separate.
+                rolls overlapping analyses into what we do best, where we lag, and next
+                steps. It updates as new companies are analyzed.
               </p>
             </div>
             <div style={styles.dashCount}>
