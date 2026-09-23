@@ -39,29 +39,30 @@ function SourceChips({ sources }) {
   );
 }
 
-function splitCrossover(items) {
-  const list = items || [];
-  return {
-    shared: list.filter((item) => item.crossover),
-    unique: list.filter((item) => !item.crossover),
-  };
-}
-
-function ThemeRows({ items }) {
+function ThemeRows({ items, showPriority = false }) {
   if (!items?.length) return null;
   return (
     <div style={styles.insightList}>
       {items.map((item) => (
         <div key={item.id || item.title} style={styles.insightCard}>
-          <div style={styles.insightTitle}>{item.title}</div>
+          <div style={styles.insightHead}>
+            <div style={styles.insightTitle}>{item.title}</div>
+            {showPriority ? (
+              <span
+                style={{
+                  ...styles.priority,
+                  background: item.priority === 'now' ? '#C523A1' : '#333',
+                }}
+              >
+                {item.priority === 'now' ? 'Do now' : 'Next'}
+              </span>
+            ) : null}
+          </div>
           <div style={styles.insightText}>{item.summary}</div>
-          {item.extras?.length ? (
-            <ul style={styles.extraList}>
-              {item.extras.map((extra) => (
-                <li key={extra}>{extra}</li>
-              ))}
-            </ul>
-          ) : null}
+          <div style={styles.insightMeta}>
+            Informed by {item.sources.length}{' '}
+            {item.sources.length === 1 ? 'analysis' : 'analyses'}
+          </div>
           <SourceChips sources={item.sources} />
         </div>
       ))}
@@ -69,32 +70,13 @@ function ThemeRows({ items }) {
   );
 }
 
-function UniqueRows({ items }) {
-  if (!items?.length) return null;
-  return (
-    <div style={styles.uniqueWrap}>
-      <div style={styles.uniqueLabel}>Only in one analysis</div>
-      <div style={styles.uniqueList}>
-        {items.map((item) => (
-          <div key={item.id || item.summary} style={styles.uniqueRow}>
-            <span style={styles.uniqueText}>{item.summary}</span>
-            <SourceChips sources={item.sources} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ThemeSection({ title, hint, items, empty, color }) {
-  const { shared, unique } = splitCrossover(items);
+function ThemeSection({ title, hint, items, empty, color, showPriority = false }) {
   return (
     <section style={{ ...styles.panel, borderColor: color || '#2d2d2d' }}>
       <h2 style={styles.panelTitle}>{title}</h2>
       <p style={styles.panelHint}>{hint}</p>
-      {!shared.length && !unique.length ? <p style={styles.empty}>{empty}</p> : null}
-      <ThemeRows items={shared} />
-      <UniqueRows items={unique} />
+      {!items?.length ? <p style={styles.empty}>{empty}</p> : null}
+      <ThemeRows items={items} showPriority={showPriority} />
     </section>
   );
 }
@@ -178,8 +160,9 @@ export default function PositioningPage() {
             <div style={styles.kicker}>Market brief</div>
             <h1 style={styles.title}>Where Divi stands</h1>
             <p style={styles.lede}>
-              One condensed brief from overlapping analyses. Company names are source
-              tags, not separate recaps. No-overlap profiles are excluded.
+              Original summary of overlapping analyses: what Divi does best, where
+              competitors consistently outpace us, and what to do next. No-overlap
+              profiles are excluded.
             </p>
           </div>
           <div style={styles.countCard}>
@@ -221,74 +204,38 @@ export default function PositioningPage() {
         {!loading && insights && counts.total > 0 ? (
           <>
             <section style={styles.overview}>
-              <h2 style={styles.panelTitle}>Crossover summary</h2>
+              <h2 style={styles.panelTitle}>Summary</h2>
               <p style={styles.overviewText}>{insights.overview}</p>
               <SourceChips sources={visibleCompanies} />
             </section>
 
             <div style={styles.grid}>
               <ThemeSection
-                title="What Divi does well"
+                title="What Divi does best"
                 color="#22c55e"
-                hint="Repeated Divi edges. Shared themes first; one-off points stay tagged below."
+                hint="Consistent Divi advantages across overlapping analyses — written as a market take, not copied profile lines."
                 items={insights.whatWeDoWell}
-                empty="No Divi strengths in the selected designations."
+                empty="No consistent Divi strengths in the selected designations."
               />
               <ThemeSection
-                title="Where we’re behind"
+                title="Where we’re consistently behind"
                 color="#f39c12"
-                hint="Places overlapping companies out-claim Divi. Shared gaps first."
+                hint="Gaps that show up again and again. One-off competitor claims are left out."
                 items={insights.whereWeLag}
-                empty="No gaps in the selected designations."
+                empty="No consistent gaps in the selected designations."
               />
             </div>
 
-            <div style={{ ...styles.grid, marginTop: 22 }}>
+            <div style={{ marginTop: 22 }}>
               <ThemeSection
-                title="How to separate ourselves"
+                title="Next steps"
                 color="#9b59b6"
-                hint="Counter Direct plays; borrow useful Adjacent and Tangential ones."
-                items={insights.howToSeparate}
-                empty="No separation themes in the selected designations."
-              />
-              <ThemeSection
-                title="Notes from the market"
-                hint="Strengths and shared ground not already covered above."
-                items={insights.notesToTake}
-                empty="No additional market notes in the selected designations."
+                hint="Actions to close consistent gaps or take the useful piece from Adjacent and Tangential competitors — without copying them."
+                items={insights.nextSteps}
+                empty="No action themes in the selected designations."
+                showPriority
               />
             </div>
-
-            {insights.capabilities.length ? (
-              <section style={{ ...styles.panel, marginTop: 22 }}>
-                <h2 style={styles.panelTitle}>Capability edges</h2>
-                <p style={styles.panelHint}>
-                  Where website claims split. Ties are omitted.
-                </p>
-                <div style={styles.tableWrap}>
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={styles.th}>Capability</th>
-                        <th style={styles.th}>Divi</th>
-                        <th style={styles.th}>Them</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {insights.capabilities.map((row) => (
-                        <tr key={row.label}>
-                          <td style={styles.td}>{row.label}</td>
-                          <td style={{ ...styles.td, color: '#22c55e', fontWeight: 700 }}>{row.divi}</td>
-                          <td style={{ ...styles.td, color: '#f39c12', fontWeight: 700 }}>
-                            {row.competitor}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ) : null}
           </>
         ) : null}
       </div>
@@ -423,42 +370,30 @@ const styles = {
     padding: 14,
     border: '1px solid #222',
   },
-  insightTitle: {
-    fontWeight: 700,
-    marginBottom: 6,
-    color: '#C523A1',
-    fontSize: '0.92em',
-  },
-  insightText: { lineHeight: 1.5, marginBottom: 8 },
-  extraList: {
-    margin: '0 0 10px',
-    paddingLeft: 18,
-    color: '#b0b0b0',
-    fontSize: '0.9em',
-    lineHeight: 1.45,
-  },
-  uniqueWrap: { marginTop: 16 },
-  uniqueLabel: {
-    fontSize: '0.75em',
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    color: '#888',
-    fontWeight: 700,
-    marginBottom: 8,
-  },
-  uniqueList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  uniqueRow: {
+  insightHead: {
     display: 'flex',
     justifyContent: 'space-between',
     gap: 10,
     alignItems: 'flex-start',
-    flexWrap: 'wrap',
-    background: '#0a0a0a',
-    borderRadius: 8,
-    padding: '10px 12px',
-    border: '1px solid #1f1f1f',
+    marginBottom: 6,
   },
-  uniqueText: { flex: '1 1 220px', lineHeight: 1.45, fontSize: '0.92em', color: '#d0d0d0' },
+  insightTitle: {
+    fontWeight: 700,
+    color: '#C523A1',
+    fontSize: '0.95em',
+  },
+  insightText: { lineHeight: 1.55, marginBottom: 8 },
+  insightMeta: { fontSize: '0.78em', color: '#888', marginBottom: 8 },
+  priority: {
+    color: '#fff',
+    borderRadius: 999,
+    padding: '3px 8px',
+    fontSize: '0.68em',
+    fontWeight: 800,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    flexShrink: 0,
+  },
   chipRow: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   chip: {
     border: '1px solid #444',
