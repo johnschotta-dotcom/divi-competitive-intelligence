@@ -19,26 +19,6 @@ const FILTERS = [
   { id: 'tangential', label: 'Tangential' },
 ];
 
-function SourceChips({ sources }) {
-  return (
-    <div style={styles.chipRow}>
-      {(sources || []).map((source) => (
-        <span
-          key={`${source.id}-${source.name}`}
-          style={{
-            ...styles.chip,
-            borderColor: DESIGNATION_COLORS[source.label] || '#444',
-            color: DESIGNATION_COLORS[source.label] || '#ccc',
-          }}
-          title={source.labelDisplay}
-        >
-          {source.name}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function ThemeRows({ items, showPriority = false }) {
   if (!items?.length) return null;
   return (
@@ -63,7 +43,6 @@ function ThemeRows({ items, showPriority = false }) {
             Informed by {item.sources.length}{' '}
             {item.sources.length === 1 ? 'analysis' : 'analyses'}
           </div>
-          <SourceChips sources={item.sources} />
         </div>
       ))}
     </div>
@@ -136,7 +115,6 @@ export default function PositioningPage() {
   };
 
   const counts = raw?.counts || { total: 0, direct: 0, adjacent: 0, tangential: 0 };
-  const visibleCompanies = insights?.companies || [];
 
   return (
     <div style={styles.container}>
@@ -206,7 +184,10 @@ export default function PositioningPage() {
             <section style={styles.overview}>
               <h2 style={styles.panelTitle}>Summary</h2>
               <p style={styles.overviewText}>{insights.overview}</p>
-              <SourceChips sources={visibleCompanies} />
+              <div style={styles.insightMeta}>
+                Informed by {insights.companies.length}{' '}
+                {insights.companies.length === 1 ? 'analysis' : 'analyses'}
+              </div>
             </section>
 
             <div style={styles.grid}>
@@ -394,25 +375,6 @@ const styles = {
     textTransform: 'uppercase',
     flexShrink: 0,
   },
-  chipRow: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    border: '1px solid #444',
-    borderRadius: 999,
-    padding: '3px 8px',
-    fontSize: '0.72em',
-    fontWeight: 700,
-  },
-  tableWrap: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.92em' },
-  th: {
-    textAlign: 'left',
-    padding: '10px 8px',
-    borderBottom: '1px solid #333',
-    color: '#C523A1',
-    fontSize: '0.8em',
-    textTransform: 'uppercase',
-  },
-  td: { padding: '12px 8px', borderBottom: '1px solid #222', verticalAlign: 'top' },
   empty: { opacity: 0.65, fontStyle: 'italic' },
   emptyCard: {
     background: '#1a1a1a',
