@@ -35,6 +35,8 @@ function creditLine(count, latestAnalyzedAt) {
   const asOf = formatAnalysisDate(latestAnalyzedAt);
   return asOf ? `${informed} · Updated ${asOf}` : informed;
 }
+
+function ThemeRows({ items, showPriority = false }) {
   if (!items?.length) return null;
   return (
     <div style={styles.insightList}>
