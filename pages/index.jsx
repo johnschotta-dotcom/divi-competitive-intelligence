@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -32,6 +32,28 @@ function isDiviSite(website, name) {
   return n === 'divi' || n === 'divi.fund' || site.includes('divi.fund');
 }
 
+function isOgImageUrl(url) {
+  return /\/og(\.|$|\/)|opengraph|open-graph|og-image|ogimage|twitter-card|social[-_]?card/i.test(
+    String(url || '')
+  );
+}
+
+/** Google/DuckDuckGo often 200 with a 16×16 generic globe instead of the company mark. */
+function isFaviconProxy(url) {
+  return /google\.com\/s2\/favicons|gstatic\.com\/favicon|icons\.duckduckgo\.com/i.test(
+    String(url || '')
+  );
+}
+
+function isLowResPlaceholder(img, src) {
+  if (/\.svg(\?|#|$)/i.test(src)) return false;
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  if (!w || !h) return true;
+  // Google's missing-favicon globe is always 16×16, even when sz=128 is requested
+  return w <= 16 || h <= 16;
+}
+
 function logoCandidates(website, preferred, name) {
   const domain = domainFromWebsite(website);
   const list = [];
@@ -44,32 +66,35 @@ function logoCandidates(website, preferred, name) {
     return [...new Set(list)];
   }
 
-  const isOg =
-    preferred &&
-    /\/og(\.|$|\/)|opengraph|open-graph|og-image|ogimage|twitter-card|social[-_]?card/i.test(
-      preferred
-    );
-
-  if (preferred && !isOg) list.push(preferred);
+  // Stored first-party icons only — proxy globes go last so a 200 doesn't win
+  if (preferred && !isOgImageUrl(preferred) && !isFaviconProxy(preferred)) {
+    list.push(preferred);
+  }
   if (domain) {
-    list.push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`);
-    list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
-    list.push(`https://icon.horse/icon/${domain}`);
     list.push(`https://${domain}/apple-touch-icon.png`);
     list.push(`https://www.${domain}/apple-touch-icon.png`);
-    list.push(`https://${domain}/favicon.ico`);
+    list.push(`https://${domain}/android-chrome-192x192.png`);
     list.push(`https://${domain}/favicon.svg`);
-    list.push(`https://${domain}/icon-192.png`);
+    list.push(`https://${domain}/favicon.ico`);
+    list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+    list.push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`);
   }
   return [...new Set(list.filter(Boolean))];
 }
 
 function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
   const [idx, setIdx] = useState(0);
+  const [ready, setReady] = useState(false);
+  const advancing = useRef(false);
   const candidates = logoCandidates(website, logoUrl, name);
   useEffect(() => {
     setIdx(0);
+    setReady(false);
+    advancing.current = false;
   }, [website, logoUrl, name]);
+  useEffect(() => {
+    advancing.current = false;
+  }, [idx]);
   const src = candidates[idx];
   const initials = String(name || '?')
     .split(/\s+/)
@@ -79,47 +104,67 @@ function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
     .toUpperCase();
   const divi = isDiviSite(website, name);
 
-  if (!src || idx >= candidates.length) {
-    return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: Math.max(8, size * 0.18),
-          background: 'linear-gradient(135deg, #C523A1, #5b2c6f)',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 800,
-          fontSize: size * 0.36,
-          flexShrink: 0,
-          ...style,
-        }}
-        aria-label={`${name} logo`}
-      >
-        {initials}
-      </div>
-    );
-  }
+  const advance = () => {
+    if (advancing.current) return;
+    advancing.current = true;
+    setReady(false);
+    setIdx((i) => i + 1);
+  };
 
-  return (
-    <img
-      src={src}
-      alt={`${name} logo`}
+  const fallback = (
+    <div
       style={{
         width: size,
         height: size,
-        objectFit: 'contain',
         borderRadius: Math.max(8, size * 0.18),
-        // Gradient logos (Divi) look wrong on a white pad
-        background: divi ? 'transparent' : 'rgba(255,255,255,0.92)',
-        padding: divi ? 0 : 4,
+        background: 'linear-gradient(135deg, #C523A1, #5b2c6f)',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 800,
+        fontSize: size * 0.36,
         flexShrink: 0,
         ...style,
       }}
-      onError={() => setIdx((i) => i + 1)}
-    />
+      aria-label={`${name} logo`}
+    >
+      {initials}
+    </div>
+  );
+
+  if (!src || idx >= candidates.length) return fallback;
+
+  return (
+    <div style={{ width: size, height: size, position: 'relative', flexShrink: 0 }}>
+      {ready ? null : fallback}
+      <img
+        key={src}
+        src={src}
+        alt={`${name} logo`}
+        style={{
+          width: size,
+          height: size,
+          objectFit: 'contain',
+          borderRadius: Math.max(8, size * 0.18),
+          background: divi ? 'transparent' : 'rgba(255,255,255,0.92)',
+          padding: divi ? 0 : 4,
+          position: ready ? 'relative' : 'absolute',
+          left: 0,
+          top: 0,
+          opacity: ready ? 1 : 0,
+          ...style,
+        }}
+        onError={advance}
+        onLoad={(e) => {
+          if (isLowResPlaceholder(e.currentTarget, src)) {
+            advance();
+            return;
+          }
+          setReady(true);
+        }}
+      />
+    </div>
   );
 }
 
@@ -270,14 +315,10 @@ export default function Dashboard() {
 
   const addCompetitor = async () => {
     if (!formData.name || !formData.website) return alert('Please fill in all fields');
-    const domain = domainFromWebsite(formData.website);
-    const logo_url = domain
-      ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
-      : null;
     const { error } = await supabase.from('competitors').insert({
       name: formData.name,
       website: formData.website,
-      logo_url,
+      logo_url: null,
       status: 'active',
       tier: 'monitor',
       threat_score: 50,
