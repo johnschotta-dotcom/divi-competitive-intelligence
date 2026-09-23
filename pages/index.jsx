@@ -7,6 +7,7 @@ import {
   formatCompetitorLabel,
   tierFromCompetitorLabel,
 } from '../lib/overlap';
+import { isCredibleTeamMember } from '../lib/peopleEnrich';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://znusgttwjfuuzhycuvhs.supabase.co',
@@ -43,25 +44,22 @@ function logoCandidates(website, preferred, name) {
     return [...new Set(list)];
   }
 
-  const badPreferred =
-    !preferred ||
-    /logo\.clearbit\.com|gstatic\.com\/favicon|google\.com\/s2\/favicons/i.test(preferred) ||
+  const isOg =
+    preferred &&
     /\/og(\.|$|\/)|opengraph|open-graph|og-image|ogimage|twitter-card|social[-_]?card/i.test(
       preferred
     );
 
-  // Site icons first — never lead with OG homepage screenshots (e.g. signed.com/og.png)
+  if (preferred && !isOg) list.push(preferred);
   if (domain) {
-    list.push(`https://${domain}/apple-touch-icon.png`);
-    list.push(`https://${domain}/favicon.svg`);
-    list.push(`https://www.${domain}/apple-touch-icon.png`);
-    list.push(`https://${domain}/icon-192.png`);
-  }
-  if (!badPreferred) list.push(preferred);
-  if (domain) {
-    list.push(`https://icon.horse/icon/${domain}`);
     list.push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`);
     list.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+    list.push(`https://icon.horse/icon/${domain}`);
+    list.push(`https://${domain}/apple-touch-icon.png`);
+    list.push(`https://www.${domain}/apple-touch-icon.png`);
+    list.push(`https://${domain}/favicon.ico`);
+    list.push(`https://${domain}/favicon.svg`);
+    list.push(`https://${domain}/icon-192.png`);
   }
   return [...new Set(list.filter(Boolean))];
 }
@@ -69,6 +67,9 @@ function logoCandidates(website, preferred, name) {
 function CompanyLogo({ name, website, logoUrl, size = 56, style }) {
   const [idx, setIdx] = useState(0);
   const candidates = logoCandidates(website, logoUrl, name);
+  useEffect(() => {
+    setIdx(0);
+  }, [website, logoUrl, name]);
   const src = candidates[idx];
   const initials = String(name || '?')
     .split(/\s+/)
@@ -497,6 +498,37 @@ export default function Dashboard() {
     </div>
   );
 
+  const teamMembers = (founders || []).filter((f) =>
+    isCredibleTeamMember(f, {
+      companyName: selected?.name,
+      companySocial: {
+        twitter: selected?.twitter_url,
+        linkedin: selected?.linkedin_url,
+      },
+    })
+  );
+
+  const companySocials = (() => {
+    const seen = new Set();
+    const rows = [];
+    const push = (label, url) => {
+      if (!url || seen.has(String(url).split('?')[0])) return;
+      seen.add(String(url).split('?')[0]);
+      rows.push({ label, url });
+    };
+    push('LinkedIn', selected?.linkedin_url);
+    push('X / Twitter', selected?.twitter_url);
+    push('Facebook', selected?.facebook_url);
+    push('Instagram', selected?.instagram_url);
+    push('YouTube', selected?.youtube_url);
+    for (const item of media || []) {
+      if (item.source_name === 'company_social' && item.url) {
+        push(item.title || 'Social', item.url);
+      }
+    }
+    return rows;
+  })();
+
   const SectionNav = () => {
     const hasFunding = fundingRounds.length > 0 ||
       (selected.revenue_estimate && !/not stated/i.test(selected.revenue_estimate));
@@ -506,11 +538,15 @@ export default function Dashboard() {
       (sentiment.score != null ||
         (sentiment.summary &&
           !/pending|insufficient/i.test(sentiment.summary)));
-    const hasPress = media.some((m) => m.source_name && !['crawled_page', 'website_heading'].includes(m.source_name));
+    const hasPress = media.some(
+      (m) =>
+        m.source_name &&
+        !['crawled_page', 'website_heading', 'company_social'].includes(m.source_name)
+    );
     const tabs = [
       { id: 'comparison', label: 'Positioning vs Divi' },
       { id: 'overview', label: 'Website snapshot' },
-      founders.length ? { id: 'founders', label: `Team (${founders.length})` } : null,
+      { id: 'founders', label: teamMembers.length ? `Team (${teamMembers.length})` : 'Team' },
       techStack.length ? { id: 'tech', label: 'Tech signals' } : null,
       hasHistory ? { id: 'history', label: 'History' } : null,
       hasFunding ? { id: 'funding', label: 'On-site commercial' } : null,
@@ -799,7 +835,7 @@ export default function Dashboard() {
                   </div>
                   <div style={styles.snapStat}>
                     <div style={styles.snapStatLabel}>Team on site</div>
-                    <div style={styles.snapStatNum}>{founders.length || '—'}</div>
+                    <div style={styles.snapStatNum}>{teamMembers.length || '—'}</div>
                   </div>
                   <div style={styles.snapStat}>
                     <div style={styles.snapStatLabel}>Pages crawled</div>
@@ -1004,45 +1040,51 @@ export default function Dashboard() {
           {!detailLoading && section === 'founders' && (
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Team</h2>
-              {founders.length === 0 ? (
-                <p style={styles.emptyState}>No team members listed yet.</p>
-              ) : (
+              {teamMembers.length > 0 ? (
                 <div style={styles.founderGrid}>
-                  {founders.map((f) => (
-                    <div key={f.id} style={styles.founderCard}>
+                  {teamMembers.map((f) => (
+                    <div key={f.id || f.name} style={styles.founderCard}>
                       <div style={styles.founderName}>{f.name}</div>
-                      <div style={styles.founderTitle}>{f.title}</div>
-                      {f.location && (
-                        <div style={{ ...styles.founderTitle, opacity: 0.75 }}>{f.location}</div>
-                      )}
-                      {f.prior_companies && (
-                        <p style={styles.listItemDesc}>
-                          <span style={{ fontWeight: 600 }}>Prior: </span>
-                          {f.prior_companies}
-                        </p>
-                      )}
-                      {f.education && (
-                        <p style={styles.listItemDesc}>
-                          <span style={{ fontWeight: 600 }}>Education: </span>
-                          {f.education}
-                        </p>
-                      )}
-                      {f.bio && <p style={styles.listItemDesc}>{f.bio}</p>}
+                      {f.title ? <div style={styles.founderTitle}>{f.title}</div> : null}
                       <div style={styles.socialRow}>
-                        {f.linkedin_url && (
+                        {f.linkedin_url ? (
                           <a href={f.linkedin_url} target="_blank" rel="noreferrer" style={styles.profileLink}>
                             LinkedIn
                           </a>
-                        )}
-                        {f.twitter_url && (
+                        ) : null}
+                        {f.twitter_url ? (
                           <a href={f.twitter_url} target="_blank" rel="noreferrer" style={styles.profileLink}>
                             X / Twitter
                           </a>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ))}
                 </div>
+              ) : companySocials.length > 0 ? (
+                <>
+                  <p style={styles.emptyState}>
+                    No team members discovered. Company social profiles listed on the website:
+                  </p>
+                  <div style={styles.founderGrid}>
+                    {companySocials.map((s) => (
+                      <a
+                        key={s.url}
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ ...styles.founderCard, textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div style={styles.founderName}>{s.label}</div>
+                        <div style={styles.founderTitle}>{s.url.replace(/^https?:\/\//, '')}</div>
+                      </a>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p style={styles.emptyState}>
+                  No team members or social media handles discovered.
+                </p>
               )}
             </div>
           )}
