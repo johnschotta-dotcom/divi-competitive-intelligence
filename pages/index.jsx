@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { createClient } from '@supabase/supabase-js';
+import AppNav from '../components/AppNav';
 import {
   resolveOverlap,
   formatOverlapLevel,
@@ -193,10 +195,28 @@ export default function Dashboard() {
   const [exporting, setExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [labelFilter, setLabelFilter] = useState('all');
+  const router = useRouter();
 
   useEffect(() => {
     fetchCompetitors();
   }, []);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const wantsAdd = router.query.add != null;
+    const wantsScoring = router.query.scoring != null;
+    if (!wantsAdd && !wantsScoring) return;
+    setSelected(null);
+    if (wantsAdd) {
+      setShowAddForm(true);
+      setShowScoringGuide(false);
+    }
+    if (wantsScoring) {
+      setShowScoringGuide(true);
+      setShowAddForm(false);
+    }
+    router.replace('/', undefined, { shallow: true });
+  }, [router.isReady, router.query.add, router.query.scoring]);
 
   const isDivi = (comp) => {
     const n = String(comp?.name || '').toLowerCase();
@@ -503,6 +523,64 @@ export default function Dashboard() {
     }
   };
 
+  const goHome = () => {
+    setSelected(null);
+    setShowScoringGuide(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  };
+
+  const openScoring = () => {
+    setShowAddForm(false);
+    if (selected) setSelected(null);
+    setShowScoringGuide((v) => (selected ? true : !v));
+  };
+
+  const openAdd = () => {
+    setShowScoringGuide(false);
+    if (selected) setSelected(null);
+    setShowAddForm(true);
+  };
+
+  const confirmFullAnalysis = async () => {
+    const password = window.prompt('Enter password to run full analysis:');
+    if (password == null) return;
+    if (!String(password).trim()) {
+      alert('Password required.');
+      return;
+    }
+    try {
+      const authRes = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const authJson = await authRes.json().catch(() => ({}));
+      if (!authRes.ok || authJson.success === false) {
+        alert(authJson.error || 'Incorrect password');
+        return;
+      }
+    } catch (e) {
+      alert(e.message || 'Could not verify password');
+      return;
+    }
+    if (
+      !confirm(
+        `Run full analysis one company at a time (${competitors.length} total)? Keep this tab open — each company uses its own Vercel timeout, so the batch will not hit the 5‑minute server limit.`
+      )
+    ) {
+      return;
+    }
+    runAnalysis();
+  };
+
+  const analysisLabel = analyzing
+    ? analysisProgress
+      ? `${analysisProgress.current}/${analysisProgress.total}`
+      : 'Analyzing…'
+    : 'Run analysis';
+
   const getTierColor = (tier) => {
     if (!tier) return '#3498db';
     const t = tier.toLowerCase();
@@ -612,6 +690,19 @@ export default function Dashboard() {
     );
   };
 
+  const topNav = (
+    <AppNav
+      active={showScoringGuide ? 'scoring' : 'landscape'}
+      onHome={goHome}
+      onScoring={openScoring}
+      onAdd={openAdd}
+      onRunAnalysis={confirmFullAnalysis}
+      analyzing={analyzing}
+      analysisLabel={analysisLabel}
+      runDisabled={analyzing || !competitors.length}
+    />
+  );
+
   if (selected) {
     const matrix = Array.isArray(comparison?.feature_matrix) ? comparison.feature_matrix : [];
     const whereWeWin = Array.isArray(comparison?.divi_wins) ? comparison.divi_wins : [];
@@ -641,61 +732,7 @@ export default function Dashboard() {
 
     return (
       <div style={styles.container}>
-        <nav style={styles.nav}>
-          <div style={styles.navContent}>
-            <div style={styles.navBrand}>
-              <img src="/divi-logo.png" alt="Divi" style={styles.navLogoImg} />
-              <span>Divi Intelligence</span>
-            </div>
-            <div style={styles.navActions}>
-              <Link href="/positioning" style={styles.ghostBtn}>
-                Market positioning
-              </Link>
-              <button
-                onClick={() => exportProfile('pdf')}
-                style={styles.ghostBtn}
-                disabled={!canExport || exporting || detailLoading}
-                title={canExport ? 'Download PDF' : 'Analyze this company first'}
-              >
-                {exporting ? 'Exporting…' : 'PDF'}
-              </button>
-              <button
-                onClick={() => exportProfile('docx')}
-                style={styles.ghostBtn}
-                disabled={!canExport || exporting || detailLoading}
-                title={canExport ? 'Download Word doc' : 'Analyze this company first'}
-              >
-                DOCX
-              </button>
-              <button
-                onClick={() => runAnalysis(selected.id)}
-                style={
-                  isNew
-                    ? {
-                        ...styles.ghostBtn,
-                        borderColor: NEW_COLOR,
-                        color: NEW_COLOR,
-                      }
-                    : styles.ghostBtn
-                }
-                disabled={analyzing}
-              >
-                {analyzing ? 'Analyzing…' : isNew ? 'Analyze' : 'Re-analyze'}
-              </button>
-              <button
-                onClick={() => {
-                  setSelected(null);
-                  if (typeof window !== 'undefined') {
-                    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-                  }
-                }}
-                style={styles.navButton}
-              >
-                ← Dashboard
-              </button>
-            </div>
-          </div>
-        </nav>
+        {topNav}
 
         <div style={styles.mainContent}>
           <div style={styles.profileHeader}>
@@ -784,24 +821,35 @@ export default function Dashboard() {
                     {analyzing ? 'Analyzing…' : 'Analyze now'}
                   </button>
                 </div>
-              ) : canExport ? (
+              ) : (
                 <div style={styles.profileActions}>
                   <button
-                    onClick={() => exportProfile('pdf')}
+                    onClick={() => runAnalysis(selected.id)}
                     style={styles.ghostBtn}
-                    disabled={exporting}
+                    disabled={analyzing}
                   >
-                    {exporting ? 'Exporting…' : 'Download PDF'}
+                    {analyzing ? 'Analyzing…' : 'Re-analyze'}
                   </button>
-                  <button
-                    onClick={() => exportProfile('docx')}
-                    style={styles.ghostBtn}
-                    disabled={exporting}
-                  >
-                    Download DOCX
-                  </button>
+                  {canExport ? (
+                    <>
+                      <button
+                        onClick={() => exportProfile('pdf')}
+                        style={styles.ghostBtn}
+                        disabled={exporting}
+                      >
+                        {exporting ? 'Exporting…' : 'PDF'}
+                      </button>
+                      <button
+                        onClick={() => exportProfile('docx')}
+                        style={styles.ghostBtn}
+                        disabled={exporting}
+                      >
+                        DOCX
+                      </button>
+                    </>
+                  ) : null}
                 </div>
-              ) : null}
+              )}
               {!isNew &&
               !isDivi(selected) &&
               selected.tier !== 'reference' &&
@@ -1316,88 +1364,7 @@ export default function Dashboard() {
 
   return (
     <div style={styles.container}>
-      <nav style={styles.nav}>
-        <div style={styles.navContent}>
-          <div style={styles.navBrand}>
-            <img src="/divi-logo.png" alt="Divi" style={styles.navLogoImg} />
-            <span>Divi Intelligence</span>
-          </div>
-          <div style={styles.navActions}>
-            <Link href="/positioning" style={styles.ghostBtn}>
-              Market positioning
-            </Link>
-            <button
-              onClick={() => {
-                setShowScoringGuide((v) => !v);
-                setShowAddForm(false);
-              }}
-              style={{
-                ...styles.ghostBtn,
-                ...(showScoringGuide
-                  ? { background: 'rgba(197, 35, 161, 0.15)', borderColor: '#C523A1' }
-                  : {}),
-              }}
-            >
-              Scoring
-            </button>
-            <button
-              onClick={async () => {
-                const password = window.prompt('Enter password to run full analysis:');
-                if (password == null) return; // cancelled
-                if (!String(password).trim()) {
-                  alert('Password required.');
-                  return;
-                }
-                try {
-                  const authRes = await fetch('/api/auth', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password }),
-                  });
-                  const authJson = await authRes.json().catch(() => ({}));
-                  if (!authRes.ok || authJson.success === false) {
-                    alert(authJson.error || 'Incorrect password');
-                    return;
-                  }
-                } catch (e) {
-                  alert(e.message || 'Could not verify password');
-                  return;
-                }
-                if (
-                  !confirm(
-                    `Run full analysis one company at a time (${competitors.length} total)? Keep this tab open — each company uses its own Vercel timeout, so the batch will not hit the 5‑minute server limit.`
-                  )
-                ) {
-                  return;
-                }
-                runAnalysis();
-              }}
-              style={styles.ghostBtn}
-              disabled={analyzing || !competitors.length}
-              title={
-                analysisProgress
-                  ? `${analysisProgress.current}/${analysisProgress.total}: ${analysisProgress.name}`
-                  : 'Analyzes each company in its own request'
-              }
-            >
-              {analyzing
-                ? analysisProgress
-                  ? `${analysisProgress.current}/${analysisProgress.total}: ${analysisProgress.name}`
-                  : 'Analyzing…'
-                : 'Run full analysis'}
-            </button>
-            <button
-              onClick={() => {
-                setShowAddForm(true);
-                setShowScoringGuide(false);
-              }}
-              style={styles.addBtn}
-            >
-              + Add competitor
-            </button>
-          </div>
-        </div>
-      </nav>
+      {topNav}
 
       <div style={styles.mainContent}>
         <div style={styles.dashHeader}>
@@ -1666,60 +1633,6 @@ const styles = {
     color: '#f5f5f5',
     minHeight: '100vh',
     fontFamily: "'Segoe UI', -apple-system, sans-serif",
-  },
-  nav: {
-    background: '#1a1a1a',
-    borderBottom: '1px solid #2d2d2d',
-    padding: '18px 0',
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-  },
-  navContent: {
-    maxWidth: '1400px',
-    margin: '0 auto',
-    padding: '0 40px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 16,
-  },
-  navBrand: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    fontSize: '1.25em',
-    fontWeight: 700,
-    color: '#C523A1',
-  },
-  navLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    background: '#C523A1',
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 14,
-    fontWeight: 800,
-  },
-  navLogoImg: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    objectFit: 'cover',
-    display: 'block',
-  },
-  navActions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-  navButton: {
-    background: 'transparent',
-    color: '#C523A1',
-    border: '1px solid #C523A1',
-    padding: '10px 18px',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontWeight: 600,
   },
   ghostBtn: {
     background: 'transparent',

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { createClient } from '@supabase/supabase-js';
+import AppNav from '../components/AppNav';
 import {
   DESIGNATION_COLORS,
   buildPositioningInsights,
@@ -77,6 +78,7 @@ function ThemeSection({ title, hint, items, empty, color, showPriority = false }
 }
 
 export default function PositioningPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [raw, setRaw] = useState(null);
@@ -145,19 +147,11 @@ export default function PositioningPage() {
 
   return (
     <div style={styles.container}>
-      <nav style={styles.nav}>
-        <div style={styles.navContent}>
-          <Link href="/" style={styles.navBrand}>
-            <img src="/divi-logo.png" alt="Divi" style={styles.navLogoImg} />
-            <span>Divi Intelligence</span>
-          </Link>
-          <div style={styles.navActions}>
-            <Link href="/" style={styles.navButton}>
-              ← Dashboard
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <AppNav
+        active="market"
+        onScoring={() => router.push('/?scoring=1')}
+        onAdd={() => router.push('/?add=1')}
+      />
 
       <div style={styles.main}>
         <div style={styles.header}>
@@ -256,49 +250,6 @@ const styles = {
     color: '#f5f5f5',
     minHeight: '100vh',
     fontFamily: "'Segoe UI', -apple-system, sans-serif",
-  },
-  nav: {
-    background: '#1a1a1a',
-    borderBottom: '1px solid #2d2d2d',
-    padding: '18px 0',
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-  },
-  navContent: {
-    maxWidth: 1400,
-    margin: '0 auto',
-    padding: '0 40px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 16,
-  },
-  navBrand: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    fontSize: '1.25em',
-    fontWeight: 700,
-    color: '#C523A1',
-    textDecoration: 'none',
-  },
-  navLogoImg: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    objectFit: 'cover',
-    display: 'block',
-  },
-  navActions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-  navButton: {
-    background: 'transparent',
-    color: '#C523A1',
-    border: '1px solid #C523A1',
-    padding: '10px 18px',
-    borderRadius: 8,
-    fontWeight: 600,
-    textDecoration: 'none',
   },
   main: { maxWidth: 1400, margin: '0 auto', padding: 40 },
   header: {
