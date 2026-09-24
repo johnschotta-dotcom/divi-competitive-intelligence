@@ -1648,7 +1648,7 @@ const styles = {
     alignItems: 'center',
   },
   addBtn: {
-    background: '#C523A1',
+    background: 'linear-gradient(to top right, #7c3aed 0%, #e11d8f 48%, #ff7a3c 100%)',
     color: '#fff',
     border: 'none',
     padding: '10px 20px',

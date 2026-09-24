@@ -103,8 +103,8 @@ const NAV_CSS = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #212121;
-  color: #fffcf5;
+  background: linear-gradient(to top right, #7c3aed 0%, #e11d8f 48%, #ff7a3c 100%);
+  color: #fff;
   border: none;
   padding: 10px 22px;
   border-radius: 999px;
@@ -118,7 +118,9 @@ const NAV_CSS = `
   font-family: inherit;
   line-height: 1.2;
 }
-.divi-cta:hover { background: #000; }
+.divi-cta:hover {
+  filter: brightness(1.08);
+}
 @media (max-width: 820px) {
   .divi-topbar-inner {
     flex-wrap: wrap;
