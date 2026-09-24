@@ -1,0 +1,32 @@
+:root {
+  --divi-bg: #1d1529;
+  --divi-bg-2: #251b36;
+  --divi-card: #2a2140;
+  --divi-border: rgba(255, 255, 255, 0.1);
+  --divi-text: #fafafa;
+  --divi-muted: #b8b0c5;
+  --divi-accent: #c523a1;
+  --divi-purple: #6b21a8;
+  --divi-cream: #fffcf5;
+  --divi-ink: #212121;
+  --divi-font: Inter, system-ui, sans-serif;
+  --divi-display: Lexend, Inter, sans-serif;
+}
+
+html,
+body,
+#__next {
+  background: var(--divi-bg);
+  color: var(--divi-text);
+  font-family: var(--divi-font);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}

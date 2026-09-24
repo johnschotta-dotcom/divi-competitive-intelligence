@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { createClient } from '@supabase/supabase-js';
 import AppNav from '../components/AppNav';
@@ -1370,14 +1369,15 @@ export default function Dashboard() {
         <div style={styles.dashHeader}>
           <div style={styles.dashHeaderTop}>
             <div style={styles.dashHeaderCopy}>
-              <h1 style={styles.dashTitle}>Competitive Landscape</h1>
-              <h2 style={styles.dashKicker}>Competitors vs. Divi</h2>
+              <div style={styles.dashKicker}>Competitors vs. Divi</div>
+              <h1 style={styles.dashTitle}>
+                Competitive{' '}
+                <span style={styles.dashTitleAccent}>Landscape.</span>
+              </h1>
               <p style={styles.dashSubtitle}>
-                <Link href="/positioning" style={{ color: '#C523A1' }}>
-                  Market positioning
-                </Link>{' '}
-                rolls overlapping analyses into what we do best, where we lag, and next
-                steps. It updates as new companies are analyzed.
+                Add companies, run analysis, and see who actually competes with us.
+                Filter by overlap, open a profile, and compare positioning, product,
+                and team.
               </p>
             </div>
             <div style={styles.dashCount}>
@@ -1629,19 +1629,20 @@ export default function Dashboard() {
 
 const styles = {
   container: {
-    background: '#0a0a0a',
+    background: '#1d1529',
     color: '#f5f5f5',
     minHeight: '100vh',
-    fontFamily: "'Segoe UI', -apple-system, sans-serif",
+    fontFamily: 'Inter, system-ui, sans-serif',
   },
   ghostBtn: {
     background: 'transparent',
-    color: '#f5f5f5',
-    border: '1px solid #444',
-    padding: '10px 18px',
-    borderRadius: 8,
+    color: '#fafafa',
+    border: '1.5px solid rgba(255,255,255,0.28)',
+    padding: '8px 16px',
+    borderRadius: 999,
     cursor: 'pointer',
     fontWeight: 600,
+    fontSize: 13,
     textDecoration: 'none',
     display: 'inline-flex',
     alignItems: 'center',
@@ -1650,10 +1651,11 @@ const styles = {
     background: '#C523A1',
     color: '#fff',
     border: 'none',
-    padding: '12px 22px',
-    borderRadius: 8,
+    padding: '10px 20px',
+    borderRadius: 999,
     cursor: 'pointer',
-    fontWeight: 600,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
   },
   deleteBtn: {
     background: '#e74c3c',
@@ -1669,7 +1671,7 @@ const styles = {
   dashHeader: {
     marginBottom: 32,
     paddingBottom: 28,
-    borderBottom: '1px solid #2d2d2d',
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
   },
   dashHeaderTop: {
     display: 'flex',
@@ -1685,29 +1687,35 @@ const styles = {
     maxWidth: 720,
   },
   dashTitle: {
-    margin: '0 0 8px',
-    fontSize: '2.75em',
+    margin: '0 0 14px',
+    fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
     fontWeight: 800,
-    letterSpacing: '-0.03em',
-    lineHeight: 1.1,
+    fontFamily: 'Lexend, Inter, sans-serif',
+    letterSpacing: '-0.04em',
+    lineHeight: 1.05,
+    color: '#fafafa',
+  },
+  dashTitleAccent: {
+    color: '#6b21a8',
   },
   dashKicker: {
-    margin: '0 0 12px',
-    fontSize: '1.15em',
-    fontWeight: 650,
-    color: '#C523A1',
-    letterSpacing: '-0.01em',
+    margin: '0 0 10px',
+    fontSize: '0.72em',
+    fontWeight: 600,
+    color: '#b8b0c5',
+    letterSpacing: '0.18em',
+    textTransform: 'uppercase',
   },
   dashSubtitle: {
     margin: 0,
-    fontSize: '0.98em',
-    lineHeight: 1.55,
-    color: '#a8a8a8',
-    maxWidth: 560,
+    fontSize: '1.02em',
+    lineHeight: 1.6,
+    color: '#b8b0c5',
+    maxWidth: 540,
   },
   dashCount: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 12,
     padding: '14px 20px',
     minWidth: 110,
@@ -1736,8 +1744,8 @@ const styles = {
   searchInput: {
     flex: '1 1 280px',
     minWidth: 200,
-    background: '#1a1a1a',
-    border: '1px solid #333',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.12)',
     color: '#f5f5f5',
     borderRadius: 8,
     padding: '12px 14px',
@@ -1745,8 +1753,8 @@ const styles = {
   },
   filterSelect: {
     flex: '0 1 200px',
-    background: '#1a1a1a',
-    border: '1px solid #333',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.12)',
     color: '#f5f5f5',
     borderRadius: 8,
     padding: '12px 14px',
@@ -1760,8 +1768,8 @@ const styles = {
     fontSize: '0.88em',
   },
   formCard: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 12,
     padding: 28,
     marginBottom: 32,
@@ -1797,9 +1805,9 @@ const styles = {
     gap: 12,
     alignItems: 'start',
     padding: '10px 12px',
-    background: '#141414',
+    background: '#20182e',
     borderRadius: 8,
-    border: '1px solid #2a2a2a',
+    border: '1px solid rgba(255,255,255,0.1)',
   },
   scoringRange: {
     fontWeight: 650,
@@ -1814,8 +1822,8 @@ const styles = {
   input: {
     width: '100%',
     padding: '12px 16px',
-    background: '#0a0a0a',
-    border: '1px solid #2d2d2d',
+    background: '#1d1529',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 8,
     color: '#fff',
     marginBottom: 12,
@@ -1829,10 +1837,10 @@ const styles = {
     gap: 22,
   },
   compCard: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderTop: '4px solid',
-    borderRadius: 12,
+    borderRadius: 16,
     cursor: 'pointer',
     padding: 22,
   },
@@ -1846,7 +1854,7 @@ const styles = {
   },
   cardLogo: { maxHeight: 64, maxWidth: '100%', objectFit: 'contain' },
   compCardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 8, marginBottom: 8 },
-  compCardTitle: { margin: 0, fontSize: '1.15em', fontWeight: 700 },
+  compCardTitle: { margin: 0, fontSize: '1.15em', fontWeight: 700, fontFamily: 'Lexend, Inter, sans-serif' },
   compBadge: { color: '#fff', padding: '5px 10px', borderRadius: 6, fontSize: '0.7em', fontWeight: 700 },
   cardTagline: { margin: '0 0 12px', opacity: 0.65, fontSize: '0.9em' },
   scorePair: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, margin: '8px 0 12px' },
@@ -1863,8 +1871,8 @@ const styles = {
     fontSize: '0.9em',
   },
   profileHeader: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 12,
     padding: 32,
     marginBottom: 24,
@@ -1927,7 +1935,13 @@ const styles = {
     fontWeight: 600,
     marginBottom: 6,
   },
-  profileTitle: { margin: '0 0 6px', fontSize: '2.2em', fontWeight: 800 },
+  profileTitle: {
+    margin: '0 0 6px',
+    fontSize: '2.2em',
+    fontWeight: 800,
+    fontFamily: 'Lexend, Inter, sans-serif',
+    letterSpacing: '-0.03em',
+  },
   tagline: { margin: '0 0 8px', opacity: 0.75 },
   profileLink: { color: '#C523A1', textDecoration: 'none' },
   metaRow: { display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12, opacity: 0.7, fontSize: '0.9em' },
@@ -1936,12 +1950,12 @@ const styles = {
     gap: 8,
     flexWrap: 'wrap',
     marginBottom: 24,
-    borderBottom: '1px solid #2d2d2d',
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
     paddingBottom: 12,
   },
   sectionTab: {
     background: 'transparent',
-    border: '1px solid #333',
+    border: '1px solid rgba(255,255,255,0.12)',
     color: '#ccc',
     padding: '8px 14px',
     borderRadius: 999,
@@ -1961,8 +1975,8 @@ const styles = {
     marginBottom: 20,
   },
   kpiCard: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 10,
     padding: 16,
   },
@@ -1970,8 +1984,8 @@ const styles = {
   kpiValue: { fontSize: '1.35em', fontWeight: 800, marginTop: 8 },
   kpiValueSmall: { fontSize: '1em', fontWeight: 600, marginTop: 8, lineHeight: 1.4 },
   card: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 12,
     padding: 28,
     marginBottom: 20,
@@ -1995,8 +2009,8 @@ const styles = {
     gap: 12,
   },
   snapStat: {
-    background: '#141414',
-    border: '1px solid #2a2a2a',
+    background: '#20182e',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 10,
     padding: '14px 16px',
     minHeight: 88,
@@ -2068,8 +2082,8 @@ const styles = {
     gap: 16,
   },
   snapThemeCol: {
-    background: '#141414',
-    border: '1px solid #2a2a2a',
+    background: '#20182e',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 10,
     padding: '16px 18px',
   },
@@ -2080,13 +2094,13 @@ const styles = {
     marginTop: 10,
   },
   snapItemPositive: {
-    background: '#0a0a0a',
+    background: '#1d1529',
     padding: '14px 16px',
     borderRadius: 8,
     borderLeft: '3px solid #C523A1',
   },
   snapItemGap: {
-    background: '#0a0a0a',
+    background: '#1d1529',
     padding: '14px 16px',
     borderRadius: 8,
     borderLeft: '3px solid #e74c3c',
@@ -2173,8 +2187,8 @@ const styles = {
     gap: 16,
   },
   toneThemeCol: {
-    background: '#141414',
-    border: '1px solid #2a2a2a',
+    background: '#20182e',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 10,
     padding: '16px 18px',
   },
@@ -2195,7 +2209,7 @@ const styles = {
   toneSource: {
     margin: 0,
     paddingTop: 4,
-    borderTop: '1px solid #2a2a2a',
+    borderTop: '1px solid rgba(255,255,255,0.1)',
     fontSize: '0.78em',
     color: '#666',
   },
@@ -2205,13 +2219,13 @@ const styles = {
   riskBarContainer: { marginBottom: 18 },
   riskBarLabel: { display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontWeight: 600, fontSize: '0.92em' },
   riskBarValue: { color: '#C523A1' },
-  riskBarTrack: { background: '#0a0a0a', height: 10, borderRadius: 6, overflow: 'hidden', marginBottom: 6 },
+  riskBarTrack: { background: '#1d1529', height: 10, borderRadius: 6, overflow: 'hidden', marginBottom: 6 },
   riskBarFill: { height: '100%' },
   riskBarNotes: { fontSize: '0.82em', opacity: 0.65, margin: 0, fontStyle: 'italic' },
   twoColumnGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 },
   itemList: { display: 'flex', flexDirection: 'column', gap: 12 },
   listItem: {
-    background: '#0a0a0a',
+    background: '#1d1529',
     padding: 14,
     borderRadius: 8,
     display: 'flex',
@@ -2224,7 +2238,7 @@ const styles = {
   emptyState: { opacity: 0.6, fontStyle: 'italic' },
   loadingText: { textAlign: 'center', padding: 48, opacity: 0.7 },
   winBox: {
-    background: '#0a0a0a',
+    background: '#1d1529',
     border: '1px solid #C523A1',
     borderRadius: 10,
     padding: 18,
@@ -2251,12 +2265,12 @@ const styles = {
     border: '1px solid rgba(197,35,161,0.35)',
   },
   founderGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 },
-  founderCard: { background: '#0a0a0a', borderRadius: 10, padding: 16, border: '1px solid #2d2d2d' },
+  founderCard: { background: '#1d1529', borderRadius: 10, padding: 16, border: '1px solid rgba(255,255,255,0.1)' },
   founderName: { fontWeight: 700, fontSize: '1.05em' },
   founderTitle: { opacity: 0.7, marginBottom: 8, fontSize: '0.9em' },
   socialRow: { display: 'flex', gap: 14, marginTop: 10 },
   techGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 },
-  techChip: { background: '#0a0a0a', border: '1px solid #2d2d2d', borderRadius: 10, padding: 14 },
+  techChip: { background: '#1d1529', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 14 },
   timeline: { display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 },
   timelineItem: { display: 'grid', gridTemplateColumns: '90px 1fr', gap: 14 },
   timelineDate: { color: '#C523A1', fontWeight: 700, fontSize: '0.9em' },

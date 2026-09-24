@@ -38,8 +38,8 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(160deg, #1a1224 0%, #2d1b3d 45%, #1a1224 100%)',
-        fontFamily: 'Georgia, "Times New Roman", serif',
+        background: '#1d1529',
+        fontFamily: 'Inter, system-ui, sans-serif',
         padding: 24,
       }}
     >
@@ -48,12 +48,11 @@ export default function LoginPage() {
         style={{
           width: '100%',
           maxWidth: 400,
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.12)',
+          background: '#251b36',
+          border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 16,
           padding: '36px 32px',
-          color: '#f5f0f7',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
+          color: '#fafafa',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -62,12 +61,22 @@ export default function LoginPage() {
             alt="Divi"
             style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', display: 'block' }}
           />
-          <div style={{ fontFamily: 'system-ui, sans-serif', fontWeight: 700, letterSpacing: 0.3 }}>
-            Divi Intelligence
+          <div style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 13 }}>
+            Divi
           </div>
         </div>
-        <h1 style={{ fontSize: '1.6rem', margin: '16px 0 8px', fontWeight: 600 }}>Enter password</h1>
-        <p style={{ opacity: 0.7, marginBottom: 24, fontFamily: 'system-ui, sans-serif', fontSize: 14 }}>
+        <h1
+          style={{
+            fontSize: '1.8rem',
+            margin: '16px 0 8px',
+            fontWeight: 800,
+            fontFamily: 'Lexend, Inter, sans-serif',
+            letterSpacing: '-0.03em',
+          }}
+        >
+          Enter password
+        </h1>
+        <p style={{ color: '#b8b0c5', marginBottom: 24, fontSize: 14, lineHeight: 1.5 }}>
           This competitive landscape is private.
         </p>
         <input
@@ -80,19 +89,17 @@ export default function LoginPage() {
             width: '100%',
             boxSizing: 'border-box',
             padding: '14px 16px',
-            borderRadius: 10,
+            borderRadius: 999,
             border: '1px solid rgba(255,255,255,0.18)',
-            background: 'rgba(0,0,0,0.25)',
+            background: '#1d1529',
             color: '#fff',
             fontSize: 16,
             marginBottom: 12,
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: 'inherit',
           }}
         />
         {error ? (
-          <p style={{ color: '#ff8fab', fontSize: 14, margin: '0 0 12px', fontFamily: 'system-ui, sans-serif' }}>
-            {error}
-          </p>
+          <p style={{ color: '#ff8fab', fontSize: 14, margin: '0 0 12px' }}>{error}</p>
         ) : null}
         <button
           type="submit"
@@ -100,14 +107,16 @@ export default function LoginPage() {
           style={{
             width: '100%',
             padding: '14px 16px',
-            borderRadius: 10,
+            borderRadius: 999,
             border: 'none',
-            background: loading ? '#8a3a74' : '#C523A1',
-            color: '#fff',
+            background: loading || !password ? '#413552' : '#fafafa',
+            color: '#1d1529',
             fontWeight: 700,
-            fontSize: 15,
+            fontSize: 12,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
             cursor: loading ? 'wait' : 'pointer',
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: 'inherit',
           }}
         >
           {loading ? 'Checking…' : 'Continue'}

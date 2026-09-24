@@ -68,7 +68,7 @@ function ThemeRows({ items, showPriority = false }) {
 
 function ThemeSection({ title, hint, items, empty, color, showPriority = false }) {
   return (
-    <section style={{ ...styles.panel, borderColor: color || '#2d2d2d' }}>
+    <section style={{ ...styles.panel, borderColor: color || 'rgba(255,255,255,0.1)' }}>
       <h2 style={styles.panelTitle}>{title}</h2>
       <p style={styles.panelHint}>{hint}</p>
       {!items?.length ? <p style={styles.empty}>{empty}</p> : null}
@@ -157,7 +157,9 @@ export default function PositioningPage() {
         <div style={styles.header}>
           <div>
             <div style={styles.kicker}>Market brief</div>
-            <h1 style={styles.title}>Where Divi stands</h1>
+            <h1 style={styles.title}>
+              Where Divi <span style={styles.titleAccent}>stands.</span>
+            </h1>
             <p style={styles.lede}>
               This brief rebuilds from current overlapping analyses. Add a company and
               analyze it — if it has overlap, strengths, gaps, and next steps will shift.
@@ -246,10 +248,10 @@ export default function PositioningPage() {
 
 const styles = {
   container: {
-    background: '#0a0a0a',
+    background: '#1d1529',
     color: '#f5f5f5',
     minHeight: '100vh',
-    fontFamily: "'Segoe UI', -apple-system, sans-serif",
+    fontFamily: 'Inter, system-ui, sans-serif',
   },
   main: { maxWidth: 1400, margin: '0 auto', padding: 40 },
   header: {
@@ -261,18 +263,27 @@ const styles = {
     marginBottom: 22,
   },
   kicker: {
-    color: '#C523A1',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
+    color: '#b8b0c5',
+    fontWeight: 600,
+    letterSpacing: '0.18em',
     textTransform: 'uppercase',
-    fontSize: '0.78em',
-    marginBottom: 8,
+    fontSize: '0.72em',
+    marginBottom: 10,
   },
-  title: { margin: '0 0 10px', fontSize: '2.1em', letterSpacing: '-0.03em' },
-  lede: { margin: 0, color: '#a8a8a8', maxWidth: 640, lineHeight: 1.55 },
+  title: {
+    margin: '0 0 14px',
+    fontSize: 'clamp(2rem, 4.5vw, 3.1rem)',
+    fontWeight: 800,
+    fontFamily: 'Lexend, Inter, sans-serif',
+    letterSpacing: '-0.04em',
+    lineHeight: 1.05,
+    color: '#fafafa',
+  },
+  titleAccent: { color: '#6b21a8' },
+  lede: { margin: 0, color: '#b8b0c5', maxWidth: 640, lineHeight: 1.6 },
   countCard: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 12,
     padding: '14px 20px',
     minWidth: 130,
@@ -289,7 +300,7 @@ const styles = {
   },
   statRow: { display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 28 },
   statPill: {
-    background: '#1a1a1a',
+    background: '#251b36',
     border: '1px solid #333',
     color: '#f5f5f5',
     borderRadius: 999,
@@ -301,7 +312,7 @@ const styles = {
     fontWeight: 600,
   },
   overview: {
-    background: '#1a1a1a',
+    background: '#251b36',
     border: '1px solid rgba(197,35,161,0.35)',
     borderRadius: 14,
     padding: 22,
@@ -314,8 +325,8 @@ const styles = {
     gap: 22,
   },
   panel: {
-    background: '#1a1a1a',
-    border: '1px solid #2d2d2d',
+    background: '#251b36',
+    border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 14,
     padding: 22,
   },
@@ -323,7 +334,7 @@ const styles = {
   panelHint: { margin: '0 0 16px', color: '#888', fontSize: '0.92em', lineHeight: 1.5 },
   insightList: { display: 'flex', flexDirection: 'column', gap: 12 },
   insightCard: {
-    background: '#0a0a0a',
+    background: '#1d1529',
     borderRadius: 10,
     padding: 14,
     border: '1px solid #222',
@@ -354,7 +365,7 @@ const styles = {
   },
   empty: { opacity: 0.65, fontStyle: 'italic' },
   emptyCard: {
-    background: '#1a1a1a',
+    background: '#251b36',
     border: '1px dashed #333',
     borderRadius: 12,
     padding: 28,
